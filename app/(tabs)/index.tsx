@@ -1,98 +1,124 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import DonutRings from '../../assets/DonutRings';
+import FlameIcon from '../../assets/FlameIcon';
+import { MacroCard } from '../../components/MacroCard';
+import { MealCard } from '../../components/MealCard';
+import { MealItem } from '../../components/MealItem';
+import { ThemedText } from '../../components/themed-text';
+import { ThemedView } from '../../components/themed-view';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
-
-export default function HomeScreen() {
+export default function Index() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ThemedView style={styles.root}>
+      <ScrollView className='flex-1 p-[2em] pl-3 pr-3' contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View className='' style={styles.header}>
+          <TouchableOpacity style={styles.iconButton}>
+            <ThemedText type="default" style={styles.chev}>&lt;</ThemedText>
+          </TouchableOpacity>
+          <ThemedText type="defaultSemiBold" style={styles.title}>Today</ThemedText>
+          <TouchableOpacity style={styles.iconButton}>
+            <ThemedText type="default" style={styles.chev}>&gt;</ThemedText>
+          </TouchableOpacity>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <View style={styles.centerArea}>
+          <View style={styles.donutWrap}>
+            <DonutRings />
+            <View style={styles.centerOverlay}>
+              <View style={styles.flameBg}>
+                <View className='mt-1'><FlameIcon size={30} /></View>
+              </View>
+              <ThemedText type="default" style={styles.subText}>Of 2,340 Kcal</ThemedText>
+              <ThemedText type="title" style={styles.kcal}>1,210</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.macrosRow} className='mx-2'>
+            <MacroCard
+              title="Carbs"
+              color="#4CAF50"
+              percentage={55}
+              current="0"
+              target="285 g"
+              backgroundColor="#DCEEDC"
+            />
+            <MacroCard
+              title="Fat"
+              color="#00BCD4"
+              percentage={65}
+              current="0"
+              target="70 g"
+              backgroundColor="#D1F1F4"
+            />
+            <MacroCard
+              title="Protein"
+              color="#FF9800"
+              percentage={48}
+              current="0"
+              target="150 g"
+              backgroundColor="#FEEACE"
+            />
+          </View>
+        </View>
+
+        <View className="pb-24" style={styles.mealsList}>
+          <MealCard title="Breakfast" onAdd={() => { }}>
+            <MealItem
+              name="Scrambled Eggs"
+              description="2 large eggs"
+              calories="156 cal"
+            />
+            <MealItem
+              name="Whole Wheat Toast"
+              description="2 slices"
+              calories="160 cal"
+            />
+          </MealCard>
+
+          <MealCard
+            title="Lunch"
+            onAdd={() => { }}
+            emptyText="No lunch logged. Tap '+' to add food."
+          />
+
+          <MealCard
+            title="Dinner"
+            onAdd={() => { }}
+            emptyText="No dinner logged. Tap '+' to add food."
+          />
+
+          <MealCard
+            title="Snacks"
+            onAdd={() => { }}
+            emptyText="No snacks logged. Tap '+' to add food."
+          />
+        </View>
+      </ScrollView>
+
+
+
+      <TouchableOpacity style={styles.fab}>
+        <ThemedText style={{ color: 'white', fontSize: 28 }}>+</ThemedText>
+      </TouchableOpacity>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  root: { flex: 1 },
+  container: { paddingBottom: 10, minHeight: '100%' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12 },
+  iconButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 18, textAlign: 'center' },
+  chev: { fontSize: 18 },
+  centerArea: { alignItems: 'center', marginTop: 8 },
+  donutWrap: { width: 280, height: 280, alignItems: 'center', justifyContent: 'center' },
+  centerOverlay: { position: 'absolute', width: 200, height: 200, alignItems: 'center', justifyContent: 'center' },
+  flameBg: { width: 40, height: 40, borderRadius: 100, backgroundColor: '#333', alignItems: 'center', justifyContent: 'center', marginBottom: 0 },
+  subText: { fontSize: 14, color: '#777' },
+  kcal: { fontSize: 40, fontWeight: '700' },
+  macrosRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  mealsList: { marginTop: 16, gap: 12 },
+  fab: { position: 'absolute', right: 20, bottom: 96, width: 64, height: 64, borderRadius: 32, backgroundColor: '#32B8C6', alignItems: 'center', justifyContent: 'center', elevation: 6 },
 });
