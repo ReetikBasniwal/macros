@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DonutRings from '../../assets/DonutRings';
 import FlameIcon from '../../assets/FlameIcon';
 import { MacroCard } from '../../components/MacroCard';
@@ -99,7 +99,7 @@ export default function Index() {
 
 
       <TouchableOpacity style={styles.fab}>
-        <ThemedText style={{ color: 'white', fontSize: 28 }}>+</ThemedText>
+        <Text className='text-white text-5xl'>+</Text>
       </TouchableOpacity>
     </ThemedView>
   );
@@ -120,5 +120,5 @@ const styles = StyleSheet.create({
   kcal: { fontSize: 40, fontWeight: '700' },
   macrosRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
   mealsList: { marginTop: 16, gap: 12 },
-  fab: { position: 'absolute', right: 20, bottom: 96, width: 64, height: 64, borderRadius: 32, backgroundColor: '#32B8C6', alignItems: 'center', justifyContent: 'center', elevation: 6 },
+  fab: { position: 'absolute', right: 25, bottom: 100, width: 60, height: 60, borderRadius: 32, backgroundColor: '#32B8C6', alignItems: 'center', justifyContent: 'center', elevation: 6 },
 });

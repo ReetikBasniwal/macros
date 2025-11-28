@@ -23,7 +23,7 @@ const TabIcon = ({
     return (
         <View className='flex mt-6 justify-center items-center rounded-full size-16'>
             {focused && <View
-                className="absolute w-2 h-2 rounded-full z-10 opacity-0"
+                className="absolute w-[6em] h-[3.8em] -bottom-[.1em] rounded-full z-10 opacity-75"
                 style={{ backgroundColor: activeColor + '20' }} // 20% opacity for glow
             />}
             <Text className=''>
