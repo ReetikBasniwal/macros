@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DonutRings from '../../assets/DonutRings';
 import FlameIcon from '../../assets/FlameIcon';
+import { BottomSheet } from '../../components/BottomSheet';
 import { MacroCard } from '../../components/MacroCard';
 import { MealCard } from '../../components/MealCard';
 import { MealItem } from '../../components/MealItem';
@@ -9,6 +10,8 @@ import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
 
 export default function Index() {
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
   return (
     <ThemedView style={styles.root}>
       <ScrollView className='flex-1 p-[2em] pl-3 pr-3' contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -98,9 +101,16 @@ export default function Index() {
 
 
 
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity style={styles.fab} onPress={() => setIsSheetOpen(true)}>
         <Text className='text-white text-5xl'>+</Text>
       </TouchableOpacity>
+
+      <BottomSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)}>
+        <ThemedText type="title">Add Item</ThemedText>
+        <ThemedText>Select an option to add to your daily log.</ThemedText>
+        {/* Placeholder content */}
+        <View style={{ height: 200 }} />
+      </BottomSheet>
     </ThemedView>
   );
 }
