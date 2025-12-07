@@ -8,16 +8,27 @@ export default function Index() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setLoading(false);
         });
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     if (loading) {
         return null; // or a loading spinner
     }
+
     console.log(session, "session")
+
     // Redirect based on session
-    return <Redirect href={session ? "/tabs" : "/auth"} />;
+    // Using 'as any' temporarily until Expo Router regenerates typed routes
+    return <Redirect href={session ? "/(tabs)" as any : "/auth"} />;
 }
