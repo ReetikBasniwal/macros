@@ -1,8 +1,8 @@
+import { Colors } from '@/constants/theme'
+import { supabase } from '@/lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
 import React, { useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, TextInput, View, useColorScheme } from 'react-native'
-import { Colors } from '../constants/theme'
-import { supabase } from '../lib/supabase'
 
 export default function Auth() {
     const [email, setEmail] = useState('')
@@ -18,7 +18,8 @@ export default function Auth() {
             password: password,
         })
 
-        if (error) Alert.alert(error.message)
+        if (error) Alert.alert(error.message);
+        console.log("logged in")
         setLoading(false)
     }
 
