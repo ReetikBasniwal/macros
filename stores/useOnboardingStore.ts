@@ -1,9 +1,11 @@
 import { create } from "zustand";
 
 interface OnboardingState {
-  age: string;
-  height: string;
-  weight: string;
+  weight_goal: number;
+  diet_type: number;
+  age: number;
+  height: number;
+  weight: number;
   sex: string;
 
   // actions
@@ -12,18 +14,22 @@ interface OnboardingState {
 }
 
 export const useOnboardingStore = create<OnboardingState>((set) => ({
-  age: "",
-  height: "",
-  weight: "",
+  weight_goal: 0,
+  diet_type: 0,
+  age: 0,
+  height: 0,
+  weight: 0,
   sex: "",
 
   setField: (key, value) => set((state) => ({ ...state, [key]: value })),
 
   reset: () =>
     set({
-      age: "",
-      height: "",
-      weight: "",
+      weight_goal: 0,
+      diet_type: 0,
+      age: 0,
+      height: 0,
+      weight: 0,
       sex: "",
     }),
 }));
