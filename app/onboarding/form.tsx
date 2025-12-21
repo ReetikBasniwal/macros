@@ -1,3 +1,7 @@
+import ActivityLevelStep from '@/components/ActivityLevelStep';
+import BiometricsStep from '@/components/BiometricsStep';
+import DailyGoalsStep from '@/components/DailyGoalsStep';
+import GoalSettingStep from '@/components/GoalSettingStep';
 import MotivationsStep from '@/components/MotivationsStep';
 import { Colors } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
@@ -6,7 +10,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View, useColorScheme } from 'react-native';
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 export default function OnboardingForm() {
     const [currentStep, setCurrentStep] = useState(1);
@@ -15,14 +19,16 @@ export default function OnboardingForm() {
     const theme = Colors[colorScheme];
     const router = useRouter();
 
-    const { weight_goal, diet_type, age, height, weight, sex, setField, reset } = useOnboardingStore();
+    const { weight_goal, diet_type, goal_setting_preference, age, height, weight, sex, activity_level, daily_goals, setField, reset } = useOnboardingStore();
 
     const canProceed = () => {
         switch (currentStep) {
             case 1: return weight_goal > 0 || diet_type > 0;
-            case 2: return age > 0;
-            case 3: return height > 0;
-            case 4: return weight > 0;
+            case 2: return goal_setting_preference !== '';
+            case 3: return age > 0;
+            case 4: return activity_level > 0;
+            case 5: return true;
+            case 6: return weight > 0;
             default: return false;
         }
     };
@@ -54,16 +60,58 @@ export default function OnboardingForm() {
             return;
         }
 
+        // Map weight_goal from number to schema text value
+        const weightGoalMap: Record<number, string> = {
+            1: 'lose',
+            2: 'gain',
+            3: 'maintain',
+        };
+        const mappedWeightGoal = weight_goal > 0 ? weightGoalMap[weight_goal] : null;
+
+        // Map diet_type from number to schema text value
+        const dietTypeMap: Record<number, string> = {
+            1: 'low_carb',
+            2: 'high_protein',
+            3: 'keto',
+            4: 'none', // Balanced Diet maps to 'none'
+        };
+        const mappedDietType = diet_type > 0 ? dietTypeMap[diet_type] : null;
+
+        // Map activity_level from number to schema text value
+        // Schema has 4 levels, code has 5 - map 5 to 'very_active'
+        const activityLevelMap: Record<number, string> = {
+            1: 'sedentary',
+            2: 'light',
+            3: 'active',
+            4: 'very_active',
+            5: 'very_active', // Extra Active maps to very_active
+        };
+        const mappedActivityLevel = activity_level > 0 ? activityLevelMap[activity_level] : null;
+
+        // Convert sex to lowercase to match schema
+        const mappedSex = sex ? sex.toLowerCase() : null;
+
+        // Extract daily goals from store
+        const calorieGoal = daily_goals.find(g => g.label === 'Calories')?.value || 2000;
+        const proteinGoal = daily_goals.find(g => g.label === 'Protein')?.value || 150;
+        const carbsGoal = daily_goals.find(g => g.label === 'Carbs')?.value || 200;
+        const fatGoal = daily_goals.find(g => g.label === 'Fat')?.value || 67;
+
         // Update user profile with onboarding data
         const { error } = await supabase
             .from('profiles')
             .update({
-                weight_goal: weight_goal,
-                diet_type: diet_type,
-                age: age,
-                height: height,
-                weight: weight,
-                sex: sex,
+                weight_goal: mappedWeightGoal,
+                diet_type: mappedDietType,
+                age: age > 0 ? age : null,
+                height_cm: height > 0 ? height : null,
+                current_weight_kg: weight > 0 ? weight : null,
+                sex: mappedSex,
+                activity_level: mappedActivityLevel,
+                daily_calorie_goal: calorieGoal,
+                daily_protein_goal: proteinGoal,
+                daily_carbs_goal: carbsGoal,
+                daily_fat_goal: fatGoal,
                 onboarding_complete: true,
             })
             .eq('id', user.id);
@@ -85,62 +133,22 @@ export default function OnboardingForm() {
             case 1:
                 return <MotivationsStep />;
             case 2:
-                return (
-                    <View style={styles.stepContainer}>
-                        <Text style={[styles.stepTitle, { color: theme.text }]}>
-                            What's your age?
-                        </Text>
-                        <TextInput
-                            style={[
-                                styles.input,
-                                {
-                                    backgroundColor: theme.card,
-                                    borderColor: theme.border,
-                                    color: theme.text
-                                }
-                            ]}
-                            onChangeText={(text) => setField('age', parseInt(text) || 0)}
-                            value={age ? age.toString() : ''}
-                            placeholder="Enter your age"
-                            keyboardType="numeric"
-                            placeholderTextColor={theme.icon}
-                            autoFocus
-                        />
-                    </View>
-                );
+                return <GoalSettingStep />;
             case 3:
                 return (
-                    <View style={styles.stepContainer}>
-                        <Text style={[styles.stepTitle, { color: theme.text }]}>
-                            What's your height?
-                        </Text>
-                        <View style={styles.inputWithUnit}>
-                            <TextInput
-                                style={[
-                                    styles.input,
-                                    {
-                                        backgroundColor: theme.card,
-                                        borderColor: theme.border,
-                                        color: theme.text,
-                                        flex: 1,
-                                    }
-                                ]}
-                                onChangeText={(text) => setField('height', parseFloat(text) || 0)}
-                                value={height ? height.toString() : ''}
-                                placeholder="Enter your height"
-                                keyboardType="numeric"
-                                placeholderTextColor={theme.icon}
-                                autoFocus
-                            />
-                            <Text style={[styles.unit, { color: theme.icon }]}>cm</Text>
-                        </View>
-                    </View>
+                    <BiometricsStep />
                 );
             case 4:
+                return <ActivityLevelStep />;
+            case 5:
+                return (
+                    <DailyGoalsStep theme={theme} />
+                );
+            case 6:
                 return (
                     <View style={styles.stepContainer}>
                         <Text style={[styles.stepTitle, { color: theme.text }]}>
-                            What's your weight?
+                            What&apos;s your weight?
                         </Text>
                         <View style={styles.inputWithUnit}>
                             <TextInput
@@ -179,7 +187,7 @@ export default function OnboardingForm() {
 
             {/* Progress dots */}
             <View style={styles.progressContainer}>
-                {[1, 2, 3, 4].map((step) => (
+                {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((step) => (
                     <View
                         key={step}
                         style={[
@@ -209,7 +217,7 @@ export default function OnboardingForm() {
                     onPress={handleNext}
                 >
                     <Text style={styles.buttonText}>
-                        {currentStep === TOTAL_STEPS ? 'Complete' : 'Continue'}
+                        {currentStep === TOTAL_STEPS ? 'Finish Setup' : 'Continue'}
                     </Text>
                 </Pressable>
             </View>

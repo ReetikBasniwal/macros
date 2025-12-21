@@ -43,11 +43,11 @@ const TabIcon = ({
     )
 }
 
-const _Layout = () => {
-    const backgroundColor = useThemeColor({}, 'card')
-    const borderColor = useThemeColor({}, 'border')
-    const activeColor = useThemeColor({}, 'tabIconSelected')
-    const inactiveColor = useThemeColor({}, 'tabIconDefault')
+const Layout = () => {
+    const backgroundColor = useThemeColor({}, 'card');
+    const borderColor = useThemeColor({}, 'border');
+    const activeColor = useThemeColor({}, 'tabIconSelected');
+    const inactiveColor = useThemeColor({}, 'tabIconDefault');
 
     return (
         <Tabs
@@ -132,4 +132,4 @@ const _Layout = () => {
     )
 }
 
-export default _Layout
+export default Layout
