@@ -1,9 +1,11 @@
+import { calculateDailyGoals } from "@/lib/calculateGoals";
 import { create } from "zustand";
 
 type Goal = {
   label: string;
   value: number;
   unit?: string;
+  input_mode?: 'absolute' | 'percent'; // Track if value is absolute or percentage
 };
 
 interface OnboardingState {
@@ -19,7 +21,8 @@ interface OnboardingState {
 
   // actions
   setField: (key: string, value: any) => void;
-  updateDailyGoal: (label: string, value: number) => void;
+  updateDailyGoal: (label: string, value: number, input_mode?: 'absolute' | 'percent') => void;
+  recalculateGoals: () => void;
   reset: () => void;
 }
 
@@ -33,21 +36,57 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   sex: "",
   activity_level: 0,
   daily_goals: [
-    { label: 'Calories', value: 2000 },
-    { label: 'Protein', value: 150, unit: 'g' },
-    { label: 'Carbs', value: 200, unit: 'g' },
-    { label: 'Fat', value: 67, unit: 'g' },
+    { label: 'Calories', value: 2000, input_mode: 'absolute' },
+    { label: 'Protein', value: 150, unit: 'g', input_mode: 'absolute' },
+    { label: 'Carbs', value: 200, unit: 'g', input_mode: 'absolute' },
+    { label: 'Fat', value: 67, unit: 'g', input_mode: 'absolute' },
   ],
 
   setField: (key, value) => set((state) => ({ ...state, [key]: value })),
 
-  updateDailyGoal: (label, value) =>
+  updateDailyGoal: (label, value, input_mode = 'absolute') =>
     set((state) => ({
       ...state,
       daily_goals: state.daily_goals.map((goal) =>
-        goal.label === label ? { ...goal, value } : goal
+        goal.label === label ? { ...goal, value, input_mode } : goal
       ),
     })),
+
+  recalculateGoals: () =>
+    set((state) => {
+      // Only recalculate if auto mode is selected and all required data is available
+      if (
+        state.goal_setting_preference === 'auto' &&
+        state.age > 0 &&
+        state.height > 0 &&
+        state.weight > 0 &&
+        state.sex &&
+        state.activity_level > 0 &&
+        state.weight_goal > 0 &&
+        state.diet_type > 0
+      ) {
+        const calculated = calculateDailyGoals({
+          age: state.age,
+          height: state.height,
+          weight: state.weight,
+          sex: state.sex,
+          activity_level: state.activity_level,
+          weight_goal: state.weight_goal,
+          diet_type: state.diet_type,
+        });
+
+        return {
+          ...state,
+          daily_goals: [
+            { label: 'Calories', value: calculated.calories, input_mode: 'absolute' },
+            { label: 'Protein', value: calculated.protein, unit: 'g', input_mode: 'absolute' },
+            { label: 'Carbs', value: calculated.carbs, unit: 'g', input_mode: 'absolute' },
+            { label: 'Fat', value: calculated.fat, unit: 'g', input_mode: 'absolute' },
+          ],
+        };
+      }
+      return state;
+    }),
 
   reset: () =>
     set({
@@ -60,10 +99,10 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
       sex: "",
       activity_level: 0,
       daily_goals: [
-        { label: 'Calories', value: 2000 },
-        { label: 'Protein', value: 150, unit: 'g' },
-        { label: 'Carbs', value: 200, unit: 'g' },
-        { label: 'Fat', value: 67, unit: 'g' },
+        { label: 'Calories', value: 2000, input_mode: 'absolute' },
+        { label: 'Protein', value: 150, unit: 'g', input_mode: 'absolute' },
+        { label: 'Carbs', value: 200, unit: 'g', input_mode: 'absolute' },
+        { label: 'Fat', value: 67, unit: 'g', input_mode: 'absolute' },
       ],
     }),
 }));

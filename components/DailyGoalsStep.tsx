@@ -2,7 +2,7 @@ import { Colors } from '@/constants/theme';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 type Theme = (typeof Colors)['light'];
@@ -12,8 +12,26 @@ type DailyGoalsStepProps = {
 };
 
 export default function DailyGoalsStep({ theme }: DailyGoalsStepProps) {
-    const { daily_goals } = useOnboardingStore();
+    const { 
+        daily_goals, 
+        goal_setting_preference, 
+        age,
+        height,
+        weight,
+        sex,
+        activity_level,
+        weight_goal,
+        diet_type,
+        recalculateGoals 
+    } = useOnboardingStore();
     const router = useRouter();
+
+    // Recalculate goals when component mounts or when relevant data changes if auto mode is selected
+    useEffect(() => {
+        if (goal_setting_preference === 'auto') {
+            recalculateGoals();
+        }
+    }, [goal_setting_preference, age, height, weight, sex, activity_level, weight_goal, diet_type, recalculateGoals]);
 
     return (
         <ScrollView

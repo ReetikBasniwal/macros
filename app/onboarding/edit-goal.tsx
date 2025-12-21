@@ -1,8 +1,10 @@
 import { Colors } from '@/constants/theme';
+import { calculateResolvedValue, logGoalChange } from '@/lib/logGoalChange';
+import { supabase } from '@/lib/supabase';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, useColorScheme } from 'react-native';
 
 export default function EditGoalScreen() {
@@ -18,14 +20,74 @@ export default function EditGoalScreen() {
     [daily_goals, label]
   );
 
-  const [relativeToCalories, setRelativeToCalories] = useState(false);
-  const [amount, setAmount] = useState(goal ? String(goal.value) : '');
+  // Get calorie goal for percentage calculations
+  const calorieGoal = useMemo(
+    () => daily_goals.find((g) => g.label === 'Calories')?.value || 2000,
+    [daily_goals]
+  );
+
+  const isCalories = goal?.label === 'Calories';
+  const currentInputMode = goal?.input_mode || 'absolute';
+  const [relativeToCalories, setRelativeToCalories] = useState(currentInputMode === 'percent');
+  
+  // Initialize amount based on current goal value and input mode
+  const initialAmount = useMemo(() => {
+    if (!goal) return '';
+    if (currentInputMode === 'percent' && !isCalories) {
+      // Convert absolute value to percentage for display
+      const macroType = goal.label.toLowerCase() as 'protein' | 'carbs' | 'fat';
+      const caloriesPerGram = macroType === 'fat' ? 9 : 4;
+      const caloriesFromMacro = goal.value * caloriesPerGram;
+      const percentage = Math.round((caloriesFromMacro / calorieGoal) * 100);
+      return String(percentage);
+    }
+    return String(goal.value);
+  }, [goal, currentInputMode, isCalories, calorieGoal]);
+  
+  const [amount, setAmount] = useState(initialAmount);
+
+  // Update amount when toggling between absolute and percentage
+  useEffect(() => {
+    if (!goal || isCalories) return;
+    
+    const currentAmount = parseFloat(amount);
+    if (Number.isNaN(currentAmount)) return;
+
+    if (relativeToCalories) {
+      // Converting from absolute to percentage
+      const macroType = goal.label.toLowerCase() as 'protein' | 'carbs' | 'fat';
+      const caloriesPerGram = macroType === 'fat' ? 9 : 4;
+      const caloriesFromMacro = currentAmount * caloriesPerGram;
+      const percentage = Math.round((caloriesFromMacro / calorieGoal) * 100);
+      setAmount(String(percentage));
+    } else {
+      // Converting from percentage to absolute
+      const macroType = goal.label.toLowerCase() as 'protein' | 'carbs' | 'fat';
+      const resolved = calculateResolvedValue(currentAmount, 'percent', calorieGoal, macroType);
+      setAmount(String(resolved));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [relativeToCalories]); // Only run when toggle changes
 
   const formattedTitle = goal?.label === 'Calories'
     ? 'Edit Calorie Goal'
     : `Edit ${goal?.label ?? 'Goal'}`;
 
-  const onSave = () => {
+  // Calculate resolved value (absolute) for display
+  const resolvedValue = useMemo(() => {
+    if (!goal || !amount) return null;
+    const parsed = parseFloat(amount);
+    if (Number.isNaN(parsed)) return null;
+
+    if (isCalories || !relativeToCalories) {
+      return parsed;
+    }
+
+    const macroType = goal.label.toLowerCase() as 'protein' | 'carbs' | 'fat';
+    return calculateResolvedValue(parsed, 'percent', calorieGoal, macroType);
+  }, [amount, relativeToCalories, goal, calorieGoal, isCalories]);
+
+  const onSave = async () => {
     if (!goal) {
       router.back();
       return;
@@ -36,7 +98,54 @@ export default function EditGoalScreen() {
       return;
     }
 
-    updateDailyGoal(goal.label, parsed);
+    const inputMode = (isCalories || !relativeToCalories) ? 'absolute' : 'percent';
+    const oldValue = goal.value;
+    const oldInputMode = goal.input_mode || 'absolute';
+
+    // Calculate resolved values
+    const resolvedOldValue = oldInputMode === 'percent' && !isCalories
+      ? calculateResolvedValue(oldValue, 'percent', calorieGoal, goal.label.toLowerCase() as 'protein' | 'carbs' | 'fat')
+      : oldValue;
+    const resolvedNewValue = inputMode === 'percent' && !isCalories
+      ? calculateResolvedValue(parsed, 'percent', calorieGoal, goal.label.toLowerCase() as 'protein' | 'carbs' | 'fat')
+      : parsed;
+
+    // Update store
+    updateDailyGoal(goal.label, parsed, inputMode);
+
+    // Only log change to history if onboarding is complete AND value actually changed
+    // During onboarding, changes are only logged when onboarding is completed
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // Check if onboarding is complete
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_complete')
+        .eq('id', user.id)
+        .single();
+
+      // Only log if onboarding is complete AND value actually changed
+      if (profile?.onboarding_complete && (oldValue !== parsed || oldInputMode !== inputMode)) {
+        const macroMap: Record<string, 'calories' | 'protein' | 'carbs' | 'fat'> = {
+          'Calories': 'calories',
+          'Protein': 'protein',
+          'Carbs': 'carbs',
+          'Fat': 'fat',
+        };
+
+        await logGoalChange({
+          userId: user.id,
+          macro: macroMap[goal.label] || 'calories',
+          inputMode,
+          oldValue,
+          newValue: parsed,
+          resolvedOldValue,
+          resolvedNewValue,
+          changeSource: 'manual',
+        });
+      }
+    }
+
     router.back();
   };
 
@@ -72,7 +181,7 @@ export default function EditGoalScreen() {
           <View style={styles.inputBlock}>
             <View style={styles.rowBetween}>
               <Text style={[styles.label, { color: theme.text }]}>
-                Amount {goal?.unit ? `(${goal.unit})` : ''}
+                Amount {relativeToCalories && !isCalories ? '(%)' : goal?.unit ? `(${goal.unit})` : ''}
               </Text>
               <Text style={[styles.helper, { color: theme.icon }]}>Required</Text>
             </View>
@@ -85,12 +194,19 @@ export default function EditGoalScreen() {
                   borderColor: theme.border
                 }
               ]}
-              placeholder={goal?.unit ? `e.g. ${goal.value}` : 'e.g. 2000'}
+              placeholder={relativeToCalories && !isCalories 
+                ? `e.g. ${goal ? Math.round((goal.value / (goal.label === 'Protein' || goal.label === 'Carbs' ? calorieGoal / 4 : calorieGoal / 9)) * 100) : 30}%`
+                : goal?.unit ? `e.g. ${goal.value}` : 'e.g. 2000'}
               placeholderTextColor={theme.icon}
               keyboardType="numeric"
               value={amount}
               onChangeText={setAmount}
             />
+            {relativeToCalories && !isCalories && resolvedValue !== null && (
+              <Text style={[styles.helper, { color: theme.icon, marginTop: 4 }]}>
+                ≈ {resolvedValue} {goal?.unit} ({Math.round((resolvedValue * (goal?.label === 'Fat' ? 9 : 4) / calorieGoal) * 100)}% of calories)
+              </Text>
+            )}
           </View>
         </View>
       </ScrollView>

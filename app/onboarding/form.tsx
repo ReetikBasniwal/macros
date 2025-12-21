@@ -4,6 +4,7 @@ import DailyGoalsStep from '@/components/DailyGoalsStep';
 import GoalSettingStep from '@/components/GoalSettingStep';
 import MotivationsStep from '@/components/MotivationsStep';
 import { Colors } from '@/constants/theme';
+import { calculateResolvedValue, logGoalChange } from '@/lib/logGoalChange';
 import { supabase } from '@/lib/supabase';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { useRouter } from 'expo-router';
@@ -91,11 +92,22 @@ export default function OnboardingForm() {
         // Convert sex to lowercase to match schema
         const mappedSex = sex ? sex.toLowerCase() : null;
 
-        // Extract daily goals from store
+        // Extract daily goals and input modes from store
         const calorieGoal = daily_goals.find(g => g.label === 'Calories')?.value || 2000;
         const proteinGoal = daily_goals.find(g => g.label === 'Protein')?.value || 150;
         const carbsGoal = daily_goals.find(g => g.label === 'Carbs')?.value || 200;
         const fatGoal = daily_goals.find(g => g.label === 'Fat')?.value || 67;
+
+        const proteinInputMode = daily_goals.find(g => g.label === 'Protein')?.input_mode || 'absolute';
+        const carbsInputMode = daily_goals.find(g => g.label === 'Carbs')?.input_mode || 'absolute';
+        const fatInputMode = daily_goals.find(g => g.label === 'Fat')?.input_mode || 'absolute';
+
+        // Get current profile to retrieve old values for logging
+        const { data: currentProfile } = await supabase
+            .from('profiles')
+            .select('daily_calorie_goal, daily_protein_goal, daily_carbs_goal, daily_fat_goal, protein_input_mode, carbs_input_mode, fat_input_mode')
+            .eq('id', user.id)
+            .single();
 
         // Update user profile with onboarding data
         const { error } = await supabase
@@ -112,6 +124,9 @@ export default function OnboardingForm() {
                 daily_protein_goal: proteinGoal,
                 daily_carbs_goal: carbsGoal,
                 daily_fat_goal: fatGoal,
+                protein_input_mode: proteinInputMode,
+                carbs_input_mode: carbsInputMode,
+                fat_input_mode: fatInputMode,
                 onboarding_complete: true,
             })
             .eq('id', user.id);
@@ -121,6 +136,77 @@ export default function OnboardingForm() {
             setLoading(false);
             return;
         }
+
+        // Log goal changes to macro_goal_history
+        const oldCalorieGoal = currentProfile?.daily_calorie_goal || null;
+        const oldProteinGoal = currentProfile?.daily_protein_goal || null;
+        const oldCarbsGoal = currentProfile?.daily_carbs_goal || null;
+        const oldFatGoal = currentProfile?.daily_fat_goal || null;
+
+        // Calculate resolved values (absolute values)
+        const resolvedOldProtein = oldProteinGoal && currentProfile?.protein_input_mode === 'percent'
+            ? calculateResolvedValue(oldProteinGoal, 'percent', oldCalorieGoal || calorieGoal, 'protein')
+            : oldProteinGoal;
+        const resolvedOldCarbs = oldCarbsGoal && currentProfile?.carbs_input_mode === 'percent'
+            ? calculateResolvedValue(oldCarbsGoal, 'percent', oldCalorieGoal || calorieGoal, 'carbs')
+            : oldCarbsGoal;
+        const resolvedOldFat = oldFatGoal && currentProfile?.fat_input_mode === 'percent'
+            ? calculateResolvedValue(oldFatGoal, 'percent', oldCalorieGoal || calorieGoal, 'fat')
+            : oldFatGoal;
+
+        const resolvedNewProtein = proteinInputMode === 'percent'
+            ? calculateResolvedValue(proteinGoal, 'percent', calorieGoal, 'protein')
+            : proteinGoal;
+        const resolvedNewCarbs = carbsInputMode === 'percent'
+            ? calculateResolvedValue(carbsGoal, 'percent', calorieGoal, 'carbs')
+            : carbsGoal;
+        const resolvedNewFat = fatInputMode === 'percent'
+            ? calculateResolvedValue(fatGoal, 'percent', calorieGoal, 'fat')
+            : fatGoal;
+
+        // Log all macro changes
+        await Promise.all([
+            logGoalChange({
+                userId: user.id,
+                macro: 'calories',
+                inputMode: 'absolute',
+                oldValue: oldCalorieGoal,
+                newValue: calorieGoal,
+                resolvedOldValue: oldCalorieGoal,
+                resolvedNewValue: calorieGoal,
+                changeSource: 'onboarding',
+            }),
+            logGoalChange({
+                userId: user.id,
+                macro: 'protein',
+                inputMode: proteinInputMode,
+                oldValue: oldProteinGoal,
+                newValue: proteinGoal,
+                resolvedOldValue: resolvedOldProtein,
+                resolvedNewValue: resolvedNewProtein,
+                changeSource: 'onboarding',
+            }),
+            logGoalChange({
+                userId: user.id,
+                macro: 'carbs',
+                inputMode: carbsInputMode,
+                oldValue: oldCarbsGoal,
+                newValue: carbsGoal,
+                resolvedOldValue: resolvedOldCarbs,
+                resolvedNewValue: resolvedNewCarbs,
+                changeSource: 'onboarding',
+            }),
+            logGoalChange({
+                userId: user.id,
+                macro: 'fat',
+                inputMode: fatInputMode,
+                oldValue: oldFatGoal,
+                newValue: fatGoal,
+                resolvedOldValue: resolvedOldFat,
+                resolvedNewValue: resolvedNewFat,
+                changeSource: 'onboarding',
+            }),
+        ]);
 
         // Reset store and navigate to main app
         reset();
