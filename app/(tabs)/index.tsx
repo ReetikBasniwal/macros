@@ -204,11 +204,11 @@ export default function Index() {
               proteinPercent={proteinPercentage}
             />
             <View style={styles.centerOverlay}>
-              <ThemedText type="default" style={styles.subText}>
-                Of {dailyGoals?.calories.toLocaleString() || 0} Kcal
-              </ThemedText>
               <ThemedText type="title" style={styles.kcal}>
                 {dailyTotals.calories.toLocaleString()}
+              </ThemedText>
+              <ThemedText type="default" style={styles.subText}>
+                Of {dailyGoals?.calories.toLocaleString() || 0} Kcal
               </ThemedText>
             </View>
           </View>
