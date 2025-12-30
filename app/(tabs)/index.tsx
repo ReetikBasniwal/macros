@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DonutRings from '../../assets/DonutRings';
-import { BottomSheet } from '../../components/BottomSheet';
+import { AddFoodSheet } from '../../components/AddFoodSheet';
 import { MacroCard } from '../../components/MacroCard';
 import { MealCard } from '../../components/MealCard';
 import { MealItem } from '../../components/MealItem';
@@ -198,7 +198,7 @@ export default function Index() {
 
         <View style={styles.centerArea}>
           <View style={styles.donutWrap}>
-            <DonutRings 
+            <DonutRings
               carbsPercent={carbsPercentage}
               fatPercent={fatPercentage}
               proteinPercent={proteinPercentage}
@@ -308,12 +308,7 @@ export default function Index() {
         <Text className='text-white text-5xl'>+</Text>
       </TouchableOpacity>
 
-      <BottomSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)}>
-        <ThemedText type="title">Add Item</ThemedText>
-        <ThemedText>Select an option to add to your daily log.</ThemedText>
-        {/* Placeholder content */}
-        <View style={{ height: 200 }} />
-      </BottomSheet>
+      <AddFoodSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)} />
     </ThemedView>
   );
 }

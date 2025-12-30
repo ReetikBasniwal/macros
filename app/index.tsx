@@ -20,7 +20,7 @@ export default function Index() {
                     .select('onboarding_complete')
                     .eq('id', session.user.id)
                     .single();
-
+                    
                 setOnboardingComplete(userData?.onboarding_complete ?? false);
             }
 
@@ -60,8 +60,8 @@ export default function Index() {
     }
 
     if (session && onboardingComplete === false) {
-        return <Redirect href="/onboarding" as any />;
+        return <Redirect href="/onboarding" />;
     }
 
-    return <Redirect href="/(tabs)" as any />;
+    return <Redirect href="/(tabs)" />;
 }
