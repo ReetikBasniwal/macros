@@ -73,9 +73,7 @@ export default function Index() {
             </View>
         );
     }
-
-    console.log(session, "session", onboardingComplete, "onboarding")
-
+    
     // Redirect logic based on session and onboarding status
     if (!session) {
         return <Redirect href="/auth" />;
