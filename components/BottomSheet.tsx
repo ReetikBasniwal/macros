@@ -3,12 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { Dimensions, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-    runOnJS,
     useAnimatedStyle,
     useSharedValue,
     withSpring,
     withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -19,7 +19,7 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ isVisible, onClose, children }: BottomSheetProps) {
-    const backgroundColor = useThemeColor({}, 'card')
+    const backgroundColor = useThemeColor({ light: '#F5F5F5' }, 'card')
     const borderColor = useThemeColor({}, 'border')
     const activeColor = useThemeColor({}, 'tabIconSelected')
     const inactiveColor = useThemeColor({}, 'tabIconDefault')
@@ -34,7 +34,7 @@ export function BottomSheet({ isVisible, onClose, children }: BottomSheetProps) 
             opacity.value = withTiming(1, { duration: 300 });
         } else {
             translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 }, () => {
-                runOnJS(setShowModal)(false);
+                scheduleOnRN(setShowModal, false);
             });
             opacity.value = withTiming(0, { duration: 300 });
         }
@@ -48,7 +48,7 @@ export function BottomSheet({ isVisible, onClose, children }: BottomSheetProps) 
         })
         .onEnd(() => {
             if (translateY.value > 100) {
-                runOnJS(onClose)();
+                scheduleOnRN(onClose);
             } else {
                 translateY.value = withSpring(0, { damping: 15 });
             }
