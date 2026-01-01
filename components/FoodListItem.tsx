@@ -31,7 +31,7 @@ export const FoodListItem: React.FC<FoodListItemProps> = ({ item, onPress, index
             className= {`flex-row items-center justify-between p-4 bg-white border-b border-gray-100 ${index === 0 && 'rounded-t-3xl'} ${index === length - 1 && 'rounded-b-3xl'}`}
         >
             <View className="flex-1">
-                <Text className="text-lg font-bold text-gray-900 mb-0.5">{item.name}</Text>
+                <Text className="text-lg font-bold text-gray-900">{item.name}</Text>
                 <View className="flex-row items-center gap-2">
                     <View className="h-8 justify-center">
                         <Text className="text-gray-500 text-lg" numberOfLines={1}>{item.serving_size}{item.serving_unit}</Text>
