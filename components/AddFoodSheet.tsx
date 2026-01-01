@@ -1,7 +1,8 @@
-import { supabase } from "@/lib/supabase";
+import { searchGenericFoods } from '@/lib/food';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { FlatList, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BottomSheet } from './BottomSheet';
 import { FoodListItem } from './FoodListItem';
 import { ThemedText } from './themed-text';
@@ -14,6 +15,18 @@ interface AddFoodSheetProps {
 export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }) => {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<any[]>([]);
+    const [recents, setRecents] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (isVisible) {
+            loadRecents();
+        }
+    }, [isVisible]);
+
+    async function loadRecents() {
+        const data = await fetchRecentFoods();
+        if (data) setRecents(data);
+    }
 
     async function handleSearch(text: string) {
         setQuery(text);
@@ -24,7 +37,6 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
         }
 
         const data = await searchGenericFoods(text);
-        console.log(data, "data")
         setResults(data);
     }
 
@@ -32,22 +44,49 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
         <BottomSheet isVisible={isVisible} onClose={onClose}>
             <ThemedText type="title">Add Item</ThemedText>
             <ThemedText>Select an option to add to your daily log.</ThemedText>
-            {/* Placeholder content - you can add food logging UI here */}
-            <View className="mt-4">
-                {results.length > 0 ? (
-                    <FlatList
-                        className="rounded-3xl"
-                        data={results}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                            <FoodListItem 
-                                item={item} 
-                                onPress={(food) => console.log("Selected food:", food)} 
-                            />
-                        )}
-                    />
+            
+            <View className="mt-4 flex-1">
+                {query.length >= 2 ? (
+                    results.length > 0 ? (
+                        <FlatList
+                            data={results}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item, index }) => (
+                                <FoodListItem 
+                                    index={index}
+                                    length={results.length}
+                                    item={item} 
+                                    onPress={(food) => console.log("Selected food:", food)} 
+                                />
+                            )}
+                            contentContainerStyle={{ paddingBottom: 100 }}
+                        />
+                    ) : (
+                        <ThemedText>No results found.</ThemedText>
+                    )
                 ) : (
-                    <ThemedText>No results found.</ThemedText>
+                    <>
+                        <View className="mb-2 mt-2">
+                            <Text className="text-xl font-bold tracking-wider">Smart Suggestions</Text>
+                        </View>
+                        {recents.length > 0 ? (
+                            <FlatList
+                                data={recents}
+                                keyExtractor={(item) => item.id}
+                                renderItem={({ item, index }) => (
+                                    <FoodListItem 
+                                        index={index}
+                                        length={recents.length}
+                                        item={item.generic_foods} 
+                                        onPress={(food) => console.log("Selected recent:", food)} 
+                                    />
+                                )}
+                                contentContainerStyle={{ paddingBottom: 100 }}
+                            />
+                        ) : (
+                            <ThemedText className="text-gray-400 mt-2 italic">No recent items.</ThemedText>
+                        )}
+                    </>
                 )}
             </View>
             {/* Search and Scan Input - Glassy Look */}
@@ -56,7 +95,7 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
                       style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 }}>
                     <Ionicons name="search-outline" size={24} color="#6b7280" />
                     <TextInput
-                        placeholder="What did you eat?"
+                        placeholder="What are you eating?"
                         className="flex-1 ml-3 text-lg text-gray-900"
                         placeholderTextColor="#9ca3af"
                         value={query}
@@ -77,20 +116,33 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
     );
 };
 
-export async function searchGenericFoods(query: string) {
-    if (!query || query.length < 2) return [];
-
+export async function fetchRecentFoods() {
     const { data, error } = await supabase
-        .from("generic_foods")
+        .from("recent_foods")
         .select(
-            "id, name, calories, protein, carbs, fat, fiber, serving_size, serving_unit, source"
+            `
+      id,
+      food_name,
+      generic_food_id,
+      last_logged_at,
+      generic_foods (
+        id,
+        name,
+        calories,
+        protein,
+        carbs,
+        fat,
+        fiber,
+        serving_size,
+        serving_unit
+      )
+      `
         )
-        .ilike("name", `%${query}%`)
-        .order("name")
-        .limit(10);
+        .order("last_logged_at", { ascending: false })
+        .limit(5);
 
     if (error) {
-        console.error("Search error:", error);
+        console.error("Fetch recents error:", error);
         return [];
     }
 

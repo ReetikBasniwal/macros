@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -16,13 +17,18 @@ interface FoodItem {
 interface FoodListItemProps {
     item: FoodItem;
     onPress?: (item: FoodItem) => void;
+    index: number;
+    length: number;
 }
 
-export const FoodListItem: React.FC<FoodListItemProps> = ({ item, onPress }) => {
+export const FoodListItem: React.FC<FoodListItemProps> = ({ item, onPress, index, length }) => {
     return (
         <Pressable
-            onPress={() => onPress?.(item)}
-            className="flex-row items-center justify-between p-4 bg-white border-b border-gray-100"
+            onPress={async () => {
+                await upsertRecentFood(item);
+                console.log("Added to recents:", item.name);
+            }}
+            className= {`flex-row items-center justify-between p-4 bg-white border-b border-gray-100 ${index === 0 && 'rounded-t-3xl'} ${index === length - 1 && 'rounded-b-3xl'}`}
         >
             <View className="flex-1">
                 <Text className="text-lg font-bold text-gray-900 mb-0.5">{item.name}</Text>
@@ -65,3 +71,27 @@ export const FoodListItem: React.FC<FoodListItemProps> = ({ item, onPress }) => 
         </Pressable>
     );
 };
+
+async function upsertRecentFood(food: any) {
+    const { data, error } = await supabase.auth.getUser();
+
+    console.log("Auth user:", data?.user);
+
+    if (!data?.user) {
+        console.log("❌ No user found");
+        return;
+    }
+
+    const res = await supabase
+        .from("recent_foods")
+        .insert({
+            user_id: data.user.id,
+            generic_food_id: food.id,
+            food_name: food.name,
+            source_type: "generic",
+            last_logged_at: new Date().toISOString(),
+        })
+        .select();
+
+    console.log("Insert result:", res);
+}
