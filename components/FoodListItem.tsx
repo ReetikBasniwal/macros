@@ -27,11 +27,8 @@ export const FoodListItem: React.FC<FoodListItemProps> = ({ item, onPress }) => 
             <View className="flex-1">
                 <Text className="text-lg font-bold text-gray-900 mb-0.5">{item.name}</Text>
                 <View className="flex-row items-center gap-2">
-                    <View className="h-8 justify-center min-w-[60px]">
-                        <Text className="text-gray-500 text-lg" numberOfLines={1}>{item.serving_size}</Text>
-                    </View>
-                    <View className="h-8 justify-center min-w-[40px]">
-                        <Text className="text-gray-500 text-lg" numberOfLines={1}>{item.serving_unit}</Text>
+                    <View className="h-8 justify-center">
+                        <Text className="text-gray-500 text-lg" numberOfLines={1}>{item.serving_size}{item.serving_unit}</Text>
                     </View>
                 </View>
 
