@@ -1,3 +1,4 @@
+import { useDebounce } from '@/hooks/useDebounce';
 import { searchGenericFoods } from '@/lib/food';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ interface AddFoodSheetProps {
 
 export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }) => {
     const [query, setQuery] = useState("");
+    const debouncedQuery = useDebounce(query, 300);
     const [results, setResults] = useState<any[]>([]);
     const [recents, setRecents] = useState<any[]>([]);
 
@@ -28,17 +30,14 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
         if (data) setRecents(data);
     }
 
-    async function handleSearch(text: string) {
-        setQuery(text);
-
-        if (text.length < 2) {
+    useEffect(() => {
+        if (debouncedQuery.length < 2) {
             setResults([]);
             return;
         }
 
-        const data = await searchGenericFoods(text);
-        setResults(data);
-    }
+        searchGenericFoods(debouncedQuery).then(setResults);
+    }, [debouncedQuery]);
 
     return (
         <BottomSheet isVisible={isVisible} onClose={onClose}>
@@ -96,10 +95,10 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
                     <Ionicons name="search-outline" size={24} color="#6b7280" />
                     <TextInput
                         placeholder="What are you eating?"
-                        className="flex-1 ml-3 text-lg text-gray-900"
+                        className="flex-1 ml-3 text-lg text-gray-900 text-start"
                         placeholderTextColor="#9ca3af"
                         value={query}
-                        onChangeText={handleSearch}
+                        onChangeText={setQuery}
                     />
                     <TouchableOpacity>
                         <Ionicons name="mic-outline" size={24} color="black" />
