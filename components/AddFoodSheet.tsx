@@ -1,3 +1,4 @@
+import { useDebounce } from '@/hooks/useDebounce';
 import { searchGenericFoods } from '@/lib/food';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ interface AddFoodSheetProps {
 
 export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }) => {
     const [query, setQuery] = useState("");
+    const debouncedQuery = useDebounce(query, 300);
     const [results, setResults] = useState<any[]>([]);
     const [recents, setRecents] = useState<any[]>([]);
 
@@ -28,17 +30,14 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
         if (data) setRecents(data);
     }
 
-    async function handleSearch(text: string) {
-        setQuery(text);
-
-        if (text.length < 2) {
+    useEffect(() => {
+        if (debouncedQuery.length < 2) {
             setResults([]);
             return;
         }
 
-        const data = await searchGenericFoods(text);
-        setResults(data);
-    }
+        searchGenericFoods(debouncedQuery).then(setResults);
+    }, [debouncedQuery]);
 
     return (
         <BottomSheet isVisible={isVisible} onClose={onClose}>
@@ -91,15 +90,21 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
             </View>
             {/* Search and Scan Input - Glassy Look */}
             <View className="absolute bottom-10 left-4 right-4 flex-row items-center gap-3">
-                <View className="flex-1 flex-row items-center bg-white/90 border border-gray-200/50 rounded-full h-14 px-4 shadow-xl" 
+                <View className="flex-1 flex-row items-center justify-center bg-white/90 border border-gray-200/50 rounded-full h-16 px-4 shadow-xl" 
                       style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 }}>
                     <Ionicons name="search-outline" size={24} color="#6b7280" />
                     <TextInput
                         placeholder="What are you eating?"
-                        className="flex-1 ml-3 text-lg text-gray-900"
+                        className="flex-1 text-lg text-gray-900"
                         placeholderTextColor="#9ca3af"
                         value={query}
-                        onChangeText={handleSearch}
+                        onChangeText={setQuery}
+                        style={{ 
+                            height: 40,
+                            paddingVertical: 0,
+                            lineHeight: 22,
+                            transform: [{ translateY: -2 }],
+                        }}
                     />
                     <TouchableOpacity>
                         <Ionicons name="mic-outline" size={24} color="black" />
@@ -121,22 +126,22 @@ export async function fetchRecentFoods() {
         .from("recent_foods")
         .select(
             `
-      id,
-      food_name,
-      generic_food_id,
-      last_logged_at,
-      generic_foods (
-        id,
-        name,
-        calories,
-        protein,
-        carbs,
-        fat,
-        fiber,
-        serving_size,
-        serving_unit
-      )
-      `
+            id,
+            food_name,
+            generic_food_id,
+            last_logged_at,
+            generic_foods (
+                id,
+                name,
+                calories,
+                protein,
+                carbs,
+                fat,
+                fiber,
+                serving_size,
+                serving_unit
+            )
+            `
         )
         .order("last_logged_at", { ascending: false })
         .limit(5);
