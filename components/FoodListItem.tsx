@@ -45,24 +45,24 @@ export const FoodListItem: React.FC<FoodListItemProps> = ({ item, onPress, index
                     </View>
 
                     <View className="flex-row items-center gap-1">
-                        <View className="w-5 h-5 rounded-full bg-green-500 items-center justify-center">
+                        <View className="w-5 h-5 rounded-full bg-sky-400 items-center justify-center">
                             <Text className="text-white text-[10px] font-bold">C</Text>
                         </View>
-                        <Text className="font-semibold text-gray-900">{item.carbs}</Text>
+                        <Text className="font-semibold text-gray-900">{item.carbs < 1 ? item.carbs.toFixed(1) : Math.round(item.carbs)}</Text>
                     </View>
 
                     <View className="flex-row items-center gap-1">
-                        <View className="w-5 h-5 rounded-full bg-sky-400 items-center justify-center">
+                        <View className="w-5 h-5 rounded-full bg-green-500 items-center justify-center">
                             <Text className="text-white text-[10px] font-bold">F</Text>
                         </View>
-                        <Text className="font-semibold text-gray-900">{item.fat}</Text>
+                        <Text className="font-semibold text-gray-900">{item.fat < 1 ? item.fat.toFixed(1) : Math.round(item.fat)}</Text>
                     </View>
 
                     <View className="flex-row items-center gap-1">
                         <View className="w-5 h-5 rounded-full bg-orange-400 items-center justify-center">
                             <Text className="text-white text-[10px] font-bold">P</Text>
                         </View>
-                        <Text className="font-semibold text-gray-900">{Math.ceil(item.protein)}</Text>
+                        <Text className="font-semibold text-gray-900">{item.protein < 1 ? item.protein.toFixed(1) : Math.round(item.protein)}</Text>
                     </View>
                 </View>
             </View>
@@ -73,25 +73,17 @@ export const FoodListItem: React.FC<FoodListItemProps> = ({ item, onPress, index
 };
 
 async function upsertRecentFood(food: any) {
-    const { data, error } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    if (!data?.user) return;
 
-    console.log("Auth user:", data?.user);
+    const { error } = await supabase.rpc("upsert_recent_food", {
+        p_user_id: data.user.id,
+        p_generic_food_id: food.id,
+        p_food_name: food.name,
+        p_source_type: "generic",
+    });
 
-    if (!data?.user) {
-        console.log("❌ No user found");
-        return;
+    if (error) {
+        console.log("RPC error:", error);
     }
-
-    const res = await supabase
-        .from("recent_foods")
-        .insert({
-            user_id: data.user.id,
-            generic_food_id: food.id,
-            food_name: food.name,
-            source_type: "generic",
-            last_logged_at: new Date().toISOString(),
-        })
-        .select();
-
-    console.log("Insert result:", res);
 }
