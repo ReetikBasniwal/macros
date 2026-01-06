@@ -1,6 +1,7 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import { ActionSheetIOS, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { FoodEntrySummary } from './FoodEntrySummary';
@@ -13,6 +14,15 @@ interface FoodDetailSheetProps {
     food: any;
 }
 
+const MEAL_TYPES = [
+    { label: 'Breakfast', value: 'breakfast' },
+    { label: 'Lunch', value: 'lunch' },
+    { label: 'Dinner', value: 'dinner' },
+    { label: 'Snack', value: 'snack' },
+    { label: 'Pre-Workout', value: 'pre_workout' },
+    { label: 'Post-Workout', value: 'post_workout' },
+];
+
 export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSheetProps) {
     const colorScheme = useColorScheme() ?? 'light';
     const themeColors = Colors[colorScheme];
@@ -20,8 +30,17 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
 
     const [portion, setPortion] = useState(food?.serving_size?.toString() || "70");
     const [unit, setUnit] = useState(food?.serving_unit || "g");
-    const [mealType, setMealType] = useState("Breakfast");
+    const [mealType, setMealType] = useState(food?.meal_type || "breakfast");
     const [date, setDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const onDateChange = (event: any, selectedDate?: Date) => {
+        const currentDate = selectedDate || date;
+        if (Platform.OS === 'android') {
+             setShowDatePicker(false);
+        }
+        setDate(currentDate);
+    };
 
     if (!food) return null;
 
@@ -55,6 +74,27 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
             const current = options.indexOf(unit);
             const next = current === -1 ? 0 : (current + 1) % (options.length - 1);
             setUnit(options[next]);
+        }
+    };
+
+    const handleMealTypePress = () => {
+        const options = [...MEAL_TYPES.map(m => m.label), 'Cancel'];
+        const cancelButtonIndex = options.length - 1;
+
+        if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions({
+                options,
+                cancelButtonIndex,
+                title: 'Select Meal Type'
+            }, (buttonIndex: number) => {
+                if (buttonIndex !== cancelButtonIndex) {
+                    setMealType(MEAL_TYPES[buttonIndex].value);
+                }
+            });
+        } else {
+            const currentIndex = MEAL_TYPES.findIndex(m => m.value === mealType);
+            const nextIndex = (currentIndex + 1) % MEAL_TYPES.length;
+            setMealType(MEAL_TYPES[nextIndex].value);
         }
     };
 
@@ -101,18 +141,30 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
 
                     {/* Settings Section */}
                     <View className="rounded-2xl overflow-hidden mb-6" style={{ backgroundColor: themeColors.card }}>
-                        <TouchableOpacity className="flex-row items-center justify-between p-4 border-b" style={{ borderColor: themeColors.border }}>
+                        <TouchableOpacity 
+                            onPress={() => setShowDatePicker(true)}
+                            className="flex-row items-center justify-between p-4 border-b" 
+                            style={{ borderColor: themeColors.border }}
+                        >
                             <Text className="font-semibold text-lg" style={{ color: textColor }}>Date</Text>
                             <View className="flex-row items-center gap-2">
-                                <Text className="text-lg" style={{ color: secondaryText }}>3 January 2026</Text>
+                                <Text className="text-lg" style={{ color: secondaryText }}>
+                                    {date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </Text>
                                 <Ionicons name="chevron-forward" size={20} color={secondaryText} />
                             </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity className="flex-row items-center justify-between p-4 border-b" style={{ borderColor: themeColors.border }}>
+                        <TouchableOpacity 
+                            onPress={handleMealTypePress}
+                            className="flex-row items-center justify-between p-4 border-b" 
+                            style={{ borderColor: themeColors.border }}
+                        >
                             <Text className="font-semibold text-lg" style={{ color: textColor }}>Meal Type</Text>
                             <View className="flex-row items-center gap-2">
-                                <Text className="text-lg" style={{ color: secondaryText }}>{mealType}</Text>
+                                <Text className="text-lg" style={{ color: secondaryText }}>
+                                    {MEAL_TYPES.find(m => m.value === mealType)?.label || "Breakfast"}
+                                </Text>
                                 <Ionicons name="chevron-expand" size={20} color={secondaryText} />
                             </View>
                         </TouchableOpacity>
@@ -361,6 +413,62 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {/* Date Picker Overlay */}
+                {Platform.OS === 'ios' && showDatePicker && (
+                    <View className="absolute inset-0 bg-black/60 z-50 justify-end">
+                        <View className="pb-8 rounded-t-3xl bg-[#1c1c1e] items-center">
+                            {/* Picker Header */}
+                            <View className="flex-row items-center justify-between p-4 w-full">
+                                <TouchableOpacity 
+                                    onPress={() => setShowDatePicker(false)}
+                                    className="w-8 h-8 items-center justify-center rounded-full bg-[#3a3a3c]"
+                                >
+                                    <Ionicons name="close" size={20} color="#9ca3af" />
+                                </TouchableOpacity>
+                                
+                                <View className="flex-row bg-[#2c2c2e] rounded-lg p-1">
+                                    <View className="bg-[#636366] px-4 py-1.5 rounded-md shadow-sm">
+                                        <Text className="text-white font-semibold text-sm">Date</Text>
+                                    </View>
+                                    <View className="px-4 py-1.5 justify-center">
+                                        <Text className="text-[#8e8e93] font-medium text-sm">Date & Time</Text>
+                                    </View>
+                                </View>
+                                
+                                <View className="w-8" /> 
+                            </View>
+                            
+                            <DateTimePicker
+                                value={date}
+                                mode="date"
+                                display="spinner"
+                                onChange={onDateChange}
+                                themeVariant="dark"
+                                textColor="white"
+                                style={{ height: 200, width: '100%' }}
+                            />
+                            
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    setDate(new Date());
+                                }}
+                                className="mt-2 py-3 bg-[#2c2c2e] rounded-full items-center w-32"
+                            >
+                                <Text className="text-white text-base font-medium">Today</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
+                {Platform.OS === 'android' && showDatePicker && (
+                    <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display="default"
+                        onChange={onDateChange}
+                    />
+                )}
             </View>
         </Modal>
     );
