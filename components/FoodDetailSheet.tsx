@@ -20,7 +20,7 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
     const colorScheme = useColorScheme() ?? 'light';
     const themeColors = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
-
+    
     const [portion, setPortion] = useState(food?.serving_size?.toString() || "70");
     const [unit, setUnit] = useState(food?.serving_unit || "g");
     const [mealType, setMealType] = useState(food?.meal_type || "breakfast");
