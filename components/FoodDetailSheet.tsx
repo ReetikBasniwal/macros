@@ -1,5 +1,7 @@
+import { MEAL_TYPES } from '@/constants/food';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
@@ -13,15 +15,6 @@ interface FoodDetailSheetProps {
     onSave: (data: any) => void;
     food: any;
 }
-
-const MEAL_TYPES = [
-    { label: 'Breakfast', value: 'breakfast' },
-    { label: 'Lunch', value: 'lunch' },
-    { label: 'Dinner', value: 'dinner' },
-    { label: 'Snack', value: 'snack' },
-    { label: 'Pre-Workout', value: 'pre_workout' },
-    { label: 'Post-Workout', value: 'post_workout' },
-];
 
 export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSheetProps) {
     const colorScheme = useColorScheme() ?? 'light';
@@ -55,6 +48,39 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
     const secondaryBg = isDark ? '#2c2c2e' : '#f0f0f0';
     const textColor = themeColors.text;
     const secondaryText = themeColors.icon;
+
+    async function handleAddToMeal() {
+        const { data } = await supabase.auth.getUser();
+        console.log(data, "user data");
+        if (!data?.user) return;
+        const servings = (parseFloat(portion) || 0) / (food.serving_size || 100);
+        const fiber = food.fiber ? (food.fiber * servings) : 0;
+
+        const { error } = await supabase
+            .from("food_logs")
+            .insert({
+                user_id: data.user.id,
+                generic_food_id: food.id,
+                food_name: food.name,
+                source_type: "generic",
+                meal_type: mealType,
+                servings, // This stores the multiple of the serving size
+                calories: calories,
+                protein: parseFloat(protein),
+                carbs: parseFloat(carbs),
+                fat: parseFloat(fat),
+                fiber: fiber,
+                logged_at: date.toISOString(), // Use selected date
+            });
+
+        if (error) {
+            console.log("Food log error:", error);
+        } else {
+            console.log("Food logged successfully");
+            onSave({ ...food, portion, mealType, date }); // Call original onSave to close/update UI
+            onClose(); 
+        }
+    }
 
     const handleUnitPress = () => {
         const options = ['g', 'oz', 'ml', 'cup', 'tbsp', 'tsp', 'Cancel'];
@@ -114,7 +140,7 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
                     <Text className="text-lg font-bold" style={{ color: textColor }}>Edit Food Entry</Text>
 
                     <TouchableOpacity 
-                        onPress={() => onSave({ ...food, portion, mealType, date })}
+                        onPress={handleAddToMeal}
                         className="w-10 h-10 rounded-full items-center justify-center"
                         style={{ backgroundColor: themeColors.tint }}
                     >
