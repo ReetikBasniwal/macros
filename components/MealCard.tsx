@@ -8,6 +8,7 @@ import { ThemedText } from './themed-text';
 
 export interface FoodLog {
     id: string;
+    generic_food_id: string;
     food_name: string;
     brand: string | null;
     meal_type: typeof MEAL_ORDER[number];
@@ -15,6 +16,7 @@ export interface FoodLog {
     protein: number;
     carbs: number;
     fat: number;
+    fiber?: number;
     servings: number;
     portion: number;
     portion_unit: string;
@@ -25,6 +27,7 @@ interface MealCardProps {
     title: string;
     meals: FoodLog[];
     onAdd?: () => void;
+    onMealPress?: (log: FoodLog) => void;
     emptyText?: string;
     style?: ViewStyle;
 }
@@ -33,6 +36,7 @@ export function MealCard({
     title,
     meals,
     onAdd,
+    onMealPress,
     emptyText,
     style,
 }: MealCardProps) {
@@ -62,6 +66,7 @@ export function MealCard({
                             carbs={log.carbs}
                             fat={log.fat}
                             protein={log.protein}
+                            onPress={() => onMealPress?.(log)}
                         />
                     ))}
                     <View className={`flex-row flex gap-3 pt-3 pb-1`}>

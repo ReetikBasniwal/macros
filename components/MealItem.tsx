@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { FoodEntrySummary } from './FoodEntrySummary';
 
 interface MealItemProps {
@@ -12,9 +12,9 @@ interface MealItemProps {
     fat: number;
 }
 
-export function MealItem({ name, brand, serving, calories, carbs, fat, protein }: MealItemProps) {
+export function MealItem({ name, brand, serving, calories, carbs, fat, protein, onPress }: MealItemProps & { onPress?: () => void }) {
     return (
-        <View style={styles.row} className='pt-2 pb-6'>
+        <TouchableOpacity style={styles.row} className='pt-2 pb-6' onPress={onPress}>
             <FoodEntrySummary
                 name={name}
                 brand={brand || undefined}
@@ -25,7 +25,7 @@ export function MealItem({ name, brand, serving, calories, carbs, fat, protein }
                 protein={protein}
                 nameSize="lg"
             />
-        </View>
+        </TouchableOpacity>
     );
 }
 

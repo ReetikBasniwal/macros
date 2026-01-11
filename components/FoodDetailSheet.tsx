@@ -1,30 +1,34 @@
 import { MEAL_TYPES } from '@/constants/food';
+import { getMacroSections, SERVING_UNITS } from '@/constants/foodDetail';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
+import { FoodDetailSheetProps, MacroItem } from '@/types/foodDetail';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import { ActionSheetIOS, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { FoodEntrySummary } from './FoodEntrySummary';
-import { MacroBadge } from './MacroBadge';
 
-interface FoodDetailSheetProps {
-    visible: boolean;
-    onClose: () => void;
-    onSave: (data: any) => void;
-    food: any;
-}
-
-export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSheetProps) {
+export function FoodDetailSheet({ visible, onClose, onSave, food, initialValues }: FoodDetailSheetProps) {
     const colorScheme = useColorScheme() ?? 'light';
     const themeColors = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
     
-    const [portion, setPortion] = useState(food?.serving_size?.toString() || "70");
-    const [unit, setUnit] = useState(food?.serving_unit || "g");
-    const [mealType, setMealType] = useState(food?.meal_type || "breakfast");
-    const [date, setDate] = useState(new Date());
+    // Reset state when food or initialValues change
+    React.useEffect(() => {
+        if (visible) {
+             setPortion(initialValues?.portion || food?.serving_size?.toString() || "70");
+             setUnit(initialValues?.unit || food?.serving_unit || "g");
+             setMealType(initialValues?.mealType || food?.meal_type || "breakfast");
+             setDate(initialValues?.date ? new Date(initialValues.date) : new Date());
+        }
+    }, [visible, food, initialValues]);
+
+    const [portion, setPortion] = useState(initialValues?.portion || food?.serving_size?.toString() || "70");
+    const [unit, setUnit] = useState(initialValues?.unit || food?.serving_unit || "g");
+    const [mealType, setMealType] = useState(initialValues?.mealType || food?.meal_type || "breakfast");
+    const [date, setDate] = useState(initialValues?.date ? new Date(initialValues.date) : new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     const onDateChange = (event: any, selectedDate?: Date) => {
@@ -56,36 +60,58 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
         const servings = (parseFloat(portion) || 0) / (food.serving_size || 100);
         const fiber = food.fiber ? (food.fiber * servings) : 0;
 
-        const { error } = await supabase
-            .from("food_logs")
-            .insert({
-                user_id: data.user.id,
-                generic_food_id: food.id,
-                food_name: food.name,
-                source_type: "generic",
-                meal_type: mealType,
-                portion: parseFloat(portion),
-                portion_unit: unit,
-                servings, // This stores the multiple of the serving size
-                calories: calories,
-                protein: parseFloat(protein),
-                carbs: parseFloat(carbs),
-                fat: parseFloat(fat),
-                fiber: fiber,
-                logged_at: date.toISOString(), // Use selected date
-            });
+        const logData = {
+            user_id: data.user.id,
+            generic_food_id: food.id,
+            food_name: food.name,
+            brand: food.brand, // Ensure brand is preserved
+            source_type: "generic",
+            meal_type: mealType,
+            portion: parseFloat(portion),
+            portion_unit: unit,
+            servings, // This stores the multiple of the serving size
+            calories: calories,
+            protein: parseFloat(protein),
+            carbs: parseFloat(carbs),
+            fat: parseFloat(fat),
+            fiber: fiber,
+            logged_at: date.toISOString(), // Use selected date
+            logged_date: date.toISOString().split('T')[0], // Ensure logged_date is set if not auto-generated
+        };
+
+        let result;
+        let error;
+
+        if (initialValues?.logId) {
+             const { data: updatedData, error: updateError } = await supabase
+                .from("food_logs")
+                .update(logData)
+                .eq('id', initialValues.logId)
+                .select()
+                .single();
+             result = updatedData;
+             error = updateError;
+        } else {
+             const { data: insertedData, error: insertError } = await supabase
+                .from("food_logs")
+                .insert(logData)
+                .select()
+                .single();
+             result = insertedData;
+             error = insertError;
+        }
 
         if (error) {
             console.log("Food log error:", error);
         } else {
             console.log("Food logged successfully");
-            onSave({ ...food, portion, mealType, date }); // Call original onSave to close/update UI
+            onSave(result); // Pass the full log object back
             onClose(); 
         }
     }
 
     const handleUnitPress = () => {
-        const options = ['g', 'oz', 'ml', 'cup', 'tbsp', 'tsp', 'Cancel'];
+        const options = SERVING_UNITS;
         const cancelButtonIndex = 6;
 
         if (Platform.OS === 'ios') {
@@ -125,6 +151,15 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
             setMealType(MEAL_TYPES[nextIndex].value);
         }
     };
+
+    const macroSections = getMacroSections({
+        calories,
+        carbs,
+        fat,
+        protein,
+        food,
+        textColor
+    });
 
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -241,157 +276,16 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
 
 
 
-                    {/* Calories & Macros Header */}
-                    <View className="px-2 pt-2 pb-1">
-                        <Text className="text-xl font-bold" style={{ color: textColor }}>Calories & Macros</Text>
-                    </View>
-
-                    {/* Macros List */}
-                    <View className="rounded-2xl overflow-hidden mb-6" style={{ backgroundColor: themeColors.card }}>
-                        <MacroRow 
-                            icon={<Ionicons className='-ml-1' name="flame" size={30} color="#ef4444" />}
-                            label="Calories"
-                            value={`${calories}`}
-                            unit="kcal"
+                    {macroSections.map((section) => (
+                        <MacroSection
+                            key={section.title}
+                            title={section.title}
+                            items={section.items}
                             themeColors={themeColors}
                             secondaryText={secondaryText}
+                            headerStyle={section.headerStyle}
                         />
-                        <MacroRow 
-                            icon={
-                                <MacroBadge type="carbs" size={24} fontSize={12} />
-                            }
-                            label="Carbohydrates"
-                            value={carbs}
-                            unit="g"
-                            themeColors={themeColors}
-                            secondaryText={secondaryText}
-                        />
-                        <MacroRow 
-                            icon={
-                                <MacroBadge type="fat" size={24} fontSize={12} />
-                            }
-                            label="Fat"
-                            value={fat}
-                            unit="g"
-                            themeColors={themeColors}
-                            secondaryText={secondaryText}
-                        />
-                        <MacroRow 
-                            icon={
-                                <MacroBadge type="protein" size={24} fontSize={12} />
-                            }
-                            label="Protein"
-                            value={protein}
-                            unit="g"
-                            isLast
-                            themeColors={themeColors}
-                            secondaryText={secondaryText}
-                        />
-                    </View>
-
-
-
-                    {/* Carbohydrates Header */}
-                    <View className="px-2 pt-4 pb-1">
-                        <Text className="text-xl font-bold" style={{ color: textColor }}>Carbohydrates</Text>
-                    </View>
-
-                    {/* Carbohydrates List */}
-                    <View className="rounded-2xl overflow-hidden mb-6" style={{ backgroundColor: themeColors.card }}>
-                        <MacroRow label="Fiber" value={food.fiber ? `${food.fiber}` : "9.86"} unit="g" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Sugars" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Added Sugars" value="0" unit="g" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Sugar Alcohols" value="-" unit="" isLast themeColors={themeColors} secondaryText={secondaryText} />
-                    </View>
-
-                    {/* Lipids Header */}
-                    <View className="px-2 pt-4 pb-1">
-                        <Text className="text-xl font-bold" style={{ color: textColor }}>Lipids</Text>
-                    </View>
-
-                    {/* Lipids List */}
-                     <View className="rounded-2xl overflow-hidden mb-6" style={{ backgroundColor: themeColors.card }}>
-                        <MacroRow label="Trans Fat" value="0" unit="g" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Saturated Fat" value="0.9" unit="g" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Monounsaturated Fat" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Polyunsaturated Fat" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Cholesterol" value="0" unit="mg" isLast themeColors={themeColors} secondaryText={secondaryText} />
-                    </View>
-
-                    {/* Minerals Header */}
-                    <View className="px-2 pt-4 pb-1">
-                        <Text className="text-xl font-bold" style={{ color: textColor }}>Minerals</Text>
-                    </View>
-
-                     {/* Minerals List */}
-                     <View className="rounded-2xl overflow-hidden mb-6" style={{ backgroundColor: themeColors.card }}>
-                        <MacroRow label="Calcium" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Chloride" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Iron" value="2.02" unit="mg" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Magnesium" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Phosphorus" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Sodium" value="3.54" unit="mg" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Zinc" value="2.26" unit="mg" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Chromium" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Copper" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Iodine" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Manganese" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Molybdenum" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Selenium" value="-" unit="" isLast themeColors={themeColors} secondaryText={secondaryText} />
-                    </View>
-
-                    {/* Vitamins Header */}
-                    <View className="px-2 pt-4 pb-1">
-                        <Text className="text-xl font-bold" style={{ color: textColor }}>Vitamins</Text>
-                    </View>
-
-                     {/* Vitamins List */}
-                     <View className="rounded-2xl overflow-hidden mb-6" style={{ backgroundColor: themeColors.card }}>
-                        <MacroRow label="Vitamin A" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Vitamin E" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Vitamin D" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Vitamin C" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Thiamin" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Riboflavin" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Niacin" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Pantothenic Acid" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Vitamin B6" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Biotin" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Folate" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Vitamin B12" value="-" unit="" themeColors={themeColors} secondaryText={secondaryText} />
-                        <MacroRow label="Vitamin K" value="-" unit="" isLast themeColors={themeColors} secondaryText={secondaryText} />
-                    </View>
-
-                    {/* Other Header */}
-                    <View className="px-2 pt-4 pb-1">
-                        <Text className="text-xl font-bold" style={{ color: textColor }}>Other</Text>
-                    </View>
-
-                     {/* Other List */}
-                     <View className="rounded-2xl overflow-hidden mb-6" style={{ backgroundColor: themeColors.card }}>
-                        <MacroRow 
-                            label="Alcohol" 
-                            value={<Ionicons name="lock-closed" size={14} color={textColor} />} 
-                            unit="" 
-                            themeColors={themeColors} 
-                            secondaryText={secondaryText} 
-                        />
-                         <MacroRow 
-                            label="Caffeine" 
-                            value={<Ionicons name="lock-closed" size={14} color={textColor} />} 
-                            unit="" 
-                            themeColors={themeColors} 
-                            secondaryText={secondaryText} 
-                        />
-                         <MacroRow 
-                            label="Water" 
-                            value={<Ionicons name="lock-closed" size={14} color={textColor} />} 
-                            unit="" 
-                            isLast
-                            themeColors={themeColors} 
-                            secondaryText={secondaryText} 
-                        />
-                    </View>
+                    ))}
                     
                     <View className="mt-8 mb-6">
                         <TouchableOpacity 
@@ -532,6 +426,44 @@ function MacroRow({
                     value
                 )}
                 {unit ? <Text className="text-sm" style={{ color: secondaryText }}>{unit}</Text> : null}
+            </View>
+        </View>
+    );
+}
+
+
+
+function MacroSection({ 
+    title, 
+    items, 
+    themeColors, 
+    secondaryText,
+    headerStyle = "pt-4"
+}: { 
+    title: string; 
+    items: MacroItem[]; 
+    themeColors: any; 
+    secondaryText: string;
+    headerStyle?: string;
+}) {
+    return (
+        <View>
+            <View className={`px-2 ${headerStyle} pb-1`}>
+                <Text className="text-xl font-bold" style={{ color: themeColors.text }}>{title}</Text>
+            </View>
+            <View className="rounded-2xl overflow-hidden mb-6" style={{ backgroundColor: themeColors.card }}>
+                {items.map((item, index) => (
+                    <MacroRow 
+                        key={item.label}
+                        icon={item.icon}
+                        label={item.label} 
+                        value={item.value} 
+                        unit={item.unit} 
+                        isLast={index === items.length - 1} 
+                        themeColors={themeColors} 
+                        secondaryText={secondaryText} 
+                    />
+                ))}
             </View>
         </View>
     );

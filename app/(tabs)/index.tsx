@@ -1,10 +1,12 @@
 import { MEAL_LABELS, MEAL_ORDER } from '@/constants/food';
+import { formatDisplayDate } from '@/lib/date';
 import { calculateResolvedValue } from '@/lib/logGoalChange';
 import { supabase } from '@/lib/supabase';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DonutRings from '../../assets/DonutRings';
 import { AddFoodSheet } from '../../components/AddFoodSheet';
+import { FoodDetailSheet } from '../../components/FoodDetailSheet';
 import { MacroCard } from '../../components/MacroCard';
 import { FoodLog, MealCard } from '../../components/MealCard';
 import { ThemedText } from '../../components/themed-text';
@@ -41,6 +43,11 @@ export default function Index() {
     fat: 0,
   });
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
+  
+  // Detail sheet state
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  const [detailSheetFood, setDetailSheetFood] = useState<any>(null);
+  const [detailSheetInitialValues, setDetailSheetInitialValues] = useState<any>(null);
 
   // Format date as YYYY-MM-DD
   const formatDate = (date: Date): string => {
@@ -94,7 +101,7 @@ export default function Index() {
       // Fetch food logs for selected date
       const { data: logs } = await supabase
         .from('food_logs')
-        .select('id, food_name, brand, meal_type, calories, protein, carbs, fat, servings, logged_date, portion, portion_unit')
+        .select('id, generic_food_id, food_name, brand, meal_type, calories, protein, carbs, fat, fiber, servings, logged_date, portion, portion_unit')
         .eq('user_id', user.id)
         .eq('logged_date', dateStr)
         .order('logged_at', { ascending: true });
@@ -146,19 +153,64 @@ export default function Index() {
     setSelectedDate(newDate);
   };
 
-  // Format date for display
-  const formatDisplayDate = (date: Date): string => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  const handleMealPress = (log: FoodLog) => {
+    const servings = log.servings || 1;
+    const baseFood = {
+      id: log.generic_food_id,
+      name: log.food_name,
+      brand: log.brand,
+      serving_size: log.portion / servings,
+      serving_unit: log.portion_unit,
+      calories: log.calories / servings,
+      protein: log.protein / servings,
+      carbs: log.carbs / servings,
+      fat: log.fat / servings,
+      fiber: (log.fiber || 0) / servings,
+    };
 
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+    setDetailSheetFood(baseFood);
+    setDetailSheetInitialValues({
+      portion: log.portion.toString(),
+      unit: log.portion_unit,
+      mealType: log.meal_type,
+      date: log.logged_date,
+      logId: log.id,
+    });
+    setIsDetailSheetOpen(true);
+  };
 
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const handleLogSave = (updatedLog: FoodLog) => {
+    setIsDetailSheetOpen(false);
+    
+    // Update foodLogs locally
+    setFoodLogs(currentLogs => {
+      const exists = currentLogs.some(log => log.id === updatedLog.id);
+      let newLogs: FoodLog[];
+      
+      if (exists) {
+        if (updatedLog.logged_date === formatDate(selectedDate)) {
+          newLogs = currentLogs.map(log => log.id === updatedLog.id ? updatedLog : log);
+        } else {
+          newLogs = currentLogs.filter(log => log.id !== updatedLog.id);
+        }
+      } else {
+        newLogs = [...currentLogs, updatedLog];
+      }
+      
+      // Recalculate totals
+      const totals = newLogs.reduce(
+        (acc, log) => ({
+             calories: acc.calories + log.calories,
+             protein: acc.protein + log.protein,
+             carbs: acc.carbs + log.carbs,
+             fat: acc.fat + log.fat,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      );
+      setDailyTotals(totals);
+
+      return newLogs;
+    });
   };
 
   if (loading) {
@@ -244,6 +296,7 @@ export default function Index() {
                 title={MEAL_LABELS[meal]}
                 meals={items}
                 onAdd={() => { }}
+                onMealPress={handleMealPress}
                 emptyText="No meals logged"
               />
             );
@@ -258,6 +311,14 @@ export default function Index() {
       </TouchableOpacity>
 
       <AddFoodSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)} />
+      
+      <FoodDetailSheet
+        visible={isDetailSheetOpen}
+        onClose={() => setIsDetailSheetOpen(false)}
+        onSave={handleLogSave}
+        food={detailSheetFood}
+        initialValues={detailSheetInitialValues}
+      />
     </ThemedView>
   );
 }
