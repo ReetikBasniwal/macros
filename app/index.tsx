@@ -10,15 +10,10 @@ export default function Index() {
     const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
 
     useEffect(() => {
-        // Get initial session with a timeout to prevent hanging
+        // Get initial session
         const checkSession = async () => {
             try {
-                const { data: { session }, error } = await Promise.race([
-                    supabase.auth.getSession(),
-                    new Promise<{ data: { session: null }, error: any }>((_, reject) => 
-                        setTimeout(() => reject(new Error('Session check timeout')), 2500)
-                    )
-                ]);
+                const { data: { session }, error } = await supabase.auth.getSession();
 
                 if (error) throw error;
                 
@@ -35,8 +30,8 @@ export default function Index() {
                     setOnboardingComplete(userData?.onboarding_complete ?? false);
                 }
             } catch (error) {
-                console.error("Error or timeout checking auth session:", error);
-                // In case of error/timeout, we'll default to no session to let the user try logging in
+                console.error("Error checking auth session:", error);
+                // In case of error, we'll default to no session to let the user try logging in
                 setSession(null); 
             } finally {
                 setLoading(false);
