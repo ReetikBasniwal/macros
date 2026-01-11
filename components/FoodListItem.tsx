@@ -15,7 +15,7 @@ export const FoodListItem: React.FC<FoodListItemProps> = ({ item, onPress, index
     return (
         <Pressable
             onPress={() => onPress(item)}
-            className={`flex-row items-center justify-between p-4 bg-white border-b border-gray-100 ${index === 0 ? 'rounded-t-3xl' : ''} ${index === length - 1 ? 'rounded-b-3xl' : ''}`}
+            className={`flex-row items-center justify-between p-4 bg-white border-gray-100 ${index === 0 ? 'rounded-t-3xl' : ''} ${index === length - 1 ? 'rounded-b-3xl' : 'border-b'}`}
         >
             <View className="flex-1">
                 <FoodEntrySummary

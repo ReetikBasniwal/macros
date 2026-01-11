@@ -1,3 +1,4 @@
+import { MEAL_LABELS, MEAL_ORDER } from '@/constants/food';
 import { calculateResolvedValue } from '@/lib/logGoalChange';
 import { supabase } from '@/lib/supabase';
 import React, { useEffect, useState } from 'react';
@@ -5,23 +6,9 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import DonutRings from '../../assets/DonutRings';
 import { AddFoodSheet } from '../../components/AddFoodSheet';
 import { MacroCard } from '../../components/MacroCard';
-import { MealCard } from '../../components/MealCard';
-import { MealItem } from '../../components/MealItem';
+import { FoodLog, MealCard } from '../../components/MealCard';
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
-
-interface FoodLog {
-  id: string;
-  food_name: string;
-  brand: string | null;
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  servings: number;
-  logged_date: string;
-}
 
 interface DailyTotals {
   calories: number;
@@ -39,6 +26,8 @@ interface DailyGoals {
   carbs_input_mode: 'absolute' | 'percent';
   fat_input_mode: 'absolute' | 'percent';
 }
+
+
 
 export default function Index() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -105,7 +94,7 @@ export default function Index() {
       // Fetch food logs for selected date
       const { data: logs } = await supabase
         .from('food_logs')
-        .select('id, food_name, brand, meal_type, calories, protein, carbs, fat, servings, logged_date')
+        .select('id, food_name, brand, meal_type, calories, protein, carbs, fat, servings, logged_date, portion, portion_unit')
         .eq('user_id', user.id)
         .eq('logged_date', dateStr)
         .order('logged_at', { ascending: true });
@@ -133,12 +122,11 @@ export default function Index() {
   };
 
   // Group food logs by meal type
-  const mealsByType = {
-    breakfast: foodLogs.filter((log) => log.meal_type === 'breakfast'),
-    lunch: foodLogs.filter((log) => log.meal_type === 'lunch'),
-    dinner: foodLogs.filter((log) => log.meal_type === 'dinner'),
-    snack: foodLogs.filter((log) => log.meal_type === 'snack'),
-  };
+  const mealsByType = MEAL_ORDER.reduce((acc, meal) => {
+    acc[meal] = foodLogs.filter((log) => log.meal_type === meal);
+    return acc;
+  }, {} as Record<typeof MEAL_ORDER[number], FoodLog[]>);
+
 
   // Calculate percentages for macros (capped at 100%)
   const proteinPercentage = dailyGoals && dailyGoals.protein > 0
@@ -242,63 +230,24 @@ export default function Index() {
         </View>
 
         <View className="pb-24" style={styles.mealsList}>
-          <MealCard title="Breakfast" onAdd={() => { }}>
-            {mealsByType.breakfast.length > 0 ? (
-              mealsByType.breakfast.map((log) => (
-                <MealItem
-                  key={log.id}
-                  name={log.food_name}
-                  description={log.brand ? `${log.brand}${log.servings > 1 ? ` (${log.servings}x)` : ''}` : log.servings > 1 ? `${log.servings} servings` : ''}
-                  calories={`${Math.round(log.calories)} cal`}
-                />
-              ))
-            ) : null}
-          </MealCard>
+          {MEAL_ORDER.map((meal) => {
+            const items = mealsByType[meal] ?? [];
 
-          <MealCard
-            title="Lunch"
-            onAdd={() => { }}
-            emptyText="No lunch logged. Tap '+' to add food."
-          >
-            {mealsByType.lunch.map((log) => (
-              <MealItem
-                key={log.id}
-                name={log.food_name}
-                description={log.brand ? `${log.brand}${log.servings > 1 ? ` (${log.servings}x)` : ''}` : log.servings > 1 ? `${log.servings} servings` : ''}
-                calories={`${Math.round(log.calories)} cal`}
-              />
-            ))}
-          </MealCard>
+            if ((meal === 'pre_workout' || meal === 'post_workout') 
+              && items.length === 0) {
+              return null;
+            }
 
-          <MealCard
-            title="Dinner"
-            onAdd={() => { }}
-            emptyText="No dinner logged. Tap '+' to add food."
-          >
-            {mealsByType.dinner.map((log) => (
-              <MealItem
-                key={log.id}
-                name={log.food_name}
-                description={log.brand ? `${log.brand}${log.servings > 1 ? ` (${log.servings}x)` : ''}` : log.servings > 1 ? `${log.servings} servings` : ''}
-                calories={`${Math.round(log.calories)} cal`}
+            return (
+              <MealCard
+                key={meal}
+                title={MEAL_LABELS[meal]}
+                meals={items}
+                onAdd={() => { }}
+                emptyText="No meals logged"
               />
-            ))}
-          </MealCard>
-
-          <MealCard
-            title="Snacks"
-            onAdd={() => { }}
-            emptyText="No snacks logged. Tap '+' to add food."
-          >
-            {mealsByType.snack.map((log) => (
-              <MealItem
-                key={log.id}
-                name={log.food_name}
-                description={log.brand ? `${log.brand}${log.servings > 1 ? ` (${log.servings}x)` : ''}` : log.servings > 1 ? `${log.servings} servings` : ''}
-                calories={`${Math.round(log.calories)} cal`}
-              />
-            ))}
-          </MealCard>
+            );
+          })}
         </View>
       </ScrollView>
 

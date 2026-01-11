@@ -64,6 +64,8 @@ export function FoodDetailSheet({ visible, onClose, onSave, food }: FoodDetailSh
                 food_name: food.name,
                 source_type: "generic",
                 meal_type: mealType,
+                portion: parseFloat(portion),
+                portion_unit: unit,
                 servings, // This stores the multiple of the serving size
                 calories: calories,
                 protein: parseFloat(protein),

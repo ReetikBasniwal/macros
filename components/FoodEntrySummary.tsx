@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+
 import React from 'react';
 import { Text, View } from 'react-native';
-import { MacroBadge } from './MacroBadge';
+import { MacroValue } from './MacroValue';
 
 interface FoodEntrySummaryProps {
     name: string;
@@ -28,10 +28,7 @@ export function FoodEntrySummary({
     secondaryTextColor = '#6b7280',
     nameSize = 'lg'
 }: FoodEntrySummaryProps) {
-    const formatValue = (value: number | string) => {
-        if (typeof value === 'string') return value;
-        return value < 1 ? value.toFixed(1) : Math.round(value).toString();
-    };
+
 
     return (
         <View>
@@ -47,22 +44,10 @@ export function FoodEntrySummary({
             </Text>
             
             <View className="flex-row items-center gap-4">
-                <View className="flex-row items-center gap-1">
-                    <Ionicons name="flame" size={16} color="#ef4444" />
-                    <Text className="font-semibold" style={{ color: "#ef4444" }}>{Math.round(Number(calories))}</Text>
-                </View>
-                <View className="flex-row items-center gap-1">
-                    <MacroBadge type="carbs" />
-                    <Text className="font-semibold text-sky-400">{formatValue(carbs)}</Text>
-                </View>
-                <View className="flex-row items-center gap-1">
-                    <MacroBadge type="fat" />
-                    <Text className="font-semibold text-green-500">{formatValue(fat)}</Text>
-                </View>
-                <View className="flex-row items-center gap-1">
-                    <MacroBadge type="protein" />
-                    <Text className="font-semibold text-orange-500">{formatValue(protein)}</Text>
-                </View>
+                <MacroValue type="calories" value={calories} badgeSize={16} />
+                <MacroValue type="carbs" value={carbs} badgeSize={16} />
+                <MacroValue type="fat" value={fat} badgeSize={16} />
+                <MacroValue type="protein" value={protein} badgeSize={16} />
             </View>
         </View>
     );
