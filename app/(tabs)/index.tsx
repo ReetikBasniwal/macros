@@ -181,12 +181,10 @@ export default function Index() {
 
   const handleLogSave = (updatedLog: FoodLog) => {
     setIsDetailSheetOpen(false);
-    
     // Update foodLogs locally
     setFoodLogs(currentLogs => {
       const exists = currentLogs.some(log => log.id === updatedLog.id);
       let newLogs: FoodLog[];
-      
       if (exists) {
         if (updatedLog.logged_date === formatDate(selectedDate)) {
           newLogs = currentLogs.map(log => log.id === updatedLog.id ? updatedLog : log);
@@ -194,7 +192,11 @@ export default function Index() {
           newLogs = currentLogs.filter(log => log.id !== updatedLog.id);
         }
       } else {
-        newLogs = [...currentLogs, updatedLog];
+        if (updatedLog.logged_date === formatDate(selectedDate)) {
+          newLogs = [...currentLogs, updatedLog];
+        } else {
+          newLogs = currentLogs;
+        }
       }
       
       // Recalculate totals
@@ -310,7 +312,7 @@ export default function Index() {
         <Text className='text-white text-5xl'>+</Text>
       </TouchableOpacity>
 
-      <AddFoodSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)} />
+      <AddFoodSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)} onFoodAdd={handleLogSave} />
       
       <FoodDetailSheet
         visible={isDetailSheetOpen}
