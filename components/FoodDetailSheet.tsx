@@ -322,10 +322,14 @@ export function FoodDetailSheet({ visible, onClose, onSave, food, initialValues 
                             elevation: 5
                         }}
                     >
-                        <TouchableOpacity className="items-center justify-center">
-                            <Ionicons name="trash-outline" size={26} color={secondaryText} />
-                        </TouchableOpacity>
-                        <View className="w-px h-6" style={{ backgroundColor: themeColors.border }} />
+                        {initialValues?.logId && (
+                            <>
+                                <TouchableOpacity className="items-center justify-center">
+                                    <Ionicons name="trash-outline" size={26} color={secondaryText} />
+                                </TouchableOpacity>
+                                <View className="w-px h-6" style={{ backgroundColor: themeColors.border }} />
+                            </>
+                        )}
                         <TouchableOpacity className="items-center justify-center">
                             <Ionicons name="share-outline" size={26} color={secondaryText} />
                         </TouchableOpacity>
