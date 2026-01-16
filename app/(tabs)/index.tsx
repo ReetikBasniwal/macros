@@ -1,27 +1,16 @@
+import { MEAL_LABELS, MEAL_ORDER } from '@/constants/food';
+import { formatDisplayDate } from '@/lib/date';
 import { calculateResolvedValue } from '@/lib/logGoalChange';
 import { supabase } from '@/lib/supabase';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DonutRings from '../../assets/DonutRings';
 import { AddFoodSheet } from '../../components/AddFoodSheet';
+import { FoodDetailSheet } from '../../components/FoodDetailSheet';
 import { MacroCard } from '../../components/MacroCard';
-import { MealCard } from '../../components/MealCard';
-import { MealItem } from '../../components/MealItem';
+import { FoodLog, MealCard } from '../../components/MealCard';
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
-
-interface FoodLog {
-  id: string;
-  food_name: string;
-  brand: string | null;
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  servings: number;
-  logged_date: string;
-}
 
 interface DailyTotals {
   calories: number;
@@ -40,6 +29,8 @@ interface DailyGoals {
   fat_input_mode: 'absolute' | 'percent';
 }
 
+
+
 export default function Index() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -52,6 +43,11 @@ export default function Index() {
     fat: 0,
   });
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
+  
+  // Detail sheet state
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  const [detailSheetFood, setDetailSheetFood] = useState<any>(null);
+  const [detailSheetInitialValues, setDetailSheetInitialValues] = useState<any>(null);
 
   // Format date as YYYY-MM-DD
   const formatDate = (date: Date): string => {
@@ -105,7 +101,7 @@ export default function Index() {
       // Fetch food logs for selected date
       const { data: logs } = await supabase
         .from('food_logs')
-        .select('id, food_name, brand, meal_type, calories, protein, carbs, fat, servings, logged_date')
+        .select('id, generic_food_id, food_name, brand, meal_type, calories, protein, carbs, fat, fiber, servings, logged_date, portion, portion_unit')
         .eq('user_id', user.id)
         .eq('logged_date', dateStr)
         .order('logged_at', { ascending: true });
@@ -133,12 +129,11 @@ export default function Index() {
   };
 
   // Group food logs by meal type
-  const mealsByType = {
-    breakfast: foodLogs.filter((log) => log.meal_type === 'breakfast'),
-    lunch: foodLogs.filter((log) => log.meal_type === 'lunch'),
-    dinner: foodLogs.filter((log) => log.meal_type === 'dinner'),
-    snack: foodLogs.filter((log) => log.meal_type === 'snack'),
-  };
+  const mealsByType = MEAL_ORDER.reduce((acc, meal) => {
+    acc[meal] = foodLogs.filter((log) => log.meal_type === meal);
+    return acc;
+  }, {} as Record<typeof MEAL_ORDER[number], FoodLog[]>);
+
 
   // Calculate percentages for macros (capped at 100%)
   const proteinPercentage = dailyGoals && dailyGoals.protein > 0
@@ -158,19 +153,64 @@ export default function Index() {
     setSelectedDate(newDate);
   };
 
-  // Format date for display
-  const formatDisplayDate = (date: Date): string => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  const handleMealPress = (log: FoodLog) => {
+    const servings = log.servings || 1;
+    const baseFood = {
+      id: log.generic_food_id,
+      name: log.food_name,
+      brand: log.brand,
+      serving_size: log.portion / servings,
+      serving_unit: log.portion_unit,
+      calories: log.calories / servings,
+      protein: log.protein / servings,
+      carbs: log.carbs / servings,
+      fat: log.fat / servings,
+      fiber: (log.fiber || 0) / servings,
+    };
 
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+    setDetailSheetFood(baseFood);
+    setDetailSheetInitialValues({
+      portion: log.portion.toString(),
+      unit: log.portion_unit,
+      mealType: log.meal_type,
+      date: log.logged_date,
+      logId: log.id,
+    });
+    setIsDetailSheetOpen(true);
+  };
 
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const handleLogSave = (updatedLog: FoodLog) => {
+    setIsDetailSheetOpen(false);
+    
+    // Update foodLogs locally
+    setFoodLogs(currentLogs => {
+      const exists = currentLogs.some(log => log.id === updatedLog.id);
+      let newLogs: FoodLog[];
+      
+      if (exists) {
+        if (updatedLog.logged_date === formatDate(selectedDate)) {
+          newLogs = currentLogs.map(log => log.id === updatedLog.id ? updatedLog : log);
+        } else {
+          newLogs = currentLogs.filter(log => log.id !== updatedLog.id);
+        }
+      } else {
+        newLogs = [...currentLogs, updatedLog];
+      }
+      
+      // Recalculate totals
+      const totals = newLogs.reduce(
+        (acc, log) => ({
+             calories: acc.calories + log.calories,
+             protein: acc.protein + log.protein,
+             carbs: acc.carbs + log.carbs,
+             fat: acc.fat + log.fat,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      );
+      setDailyTotals(totals);
+
+      return newLogs;
+    });
   };
 
   if (loading) {
@@ -242,63 +282,25 @@ export default function Index() {
         </View>
 
         <View className="pb-24" style={styles.mealsList}>
-          <MealCard title="Breakfast" onAdd={() => { }}>
-            {mealsByType.breakfast.length > 0 ? (
-              mealsByType.breakfast.map((log) => (
-                <MealItem
-                  key={log.id}
-                  name={log.food_name}
-                  description={log.brand ? `${log.brand}${log.servings > 1 ? ` (${log.servings}x)` : ''}` : log.servings > 1 ? `${log.servings} servings` : ''}
-                  calories={`${Math.round(log.calories)} cal`}
-                />
-              ))
-            ) : null}
-          </MealCard>
+          {MEAL_ORDER.map((meal) => {
+            const items = mealsByType[meal] ?? [];
 
-          <MealCard
-            title="Lunch"
-            onAdd={() => { }}
-            emptyText="No lunch logged. Tap '+' to add food."
-          >
-            {mealsByType.lunch.map((log) => (
-              <MealItem
-                key={log.id}
-                name={log.food_name}
-                description={log.brand ? `${log.brand}${log.servings > 1 ? ` (${log.servings}x)` : ''}` : log.servings > 1 ? `${log.servings} servings` : ''}
-                calories={`${Math.round(log.calories)} cal`}
-              />
-            ))}
-          </MealCard>
+            if ((meal === 'pre_workout' || meal === 'post_workout') 
+              && items.length === 0) {
+              return null;
+            }
 
-          <MealCard
-            title="Dinner"
-            onAdd={() => { }}
-            emptyText="No dinner logged. Tap '+' to add food."
-          >
-            {mealsByType.dinner.map((log) => (
-              <MealItem
-                key={log.id}
-                name={log.food_name}
-                description={log.brand ? `${log.brand}${log.servings > 1 ? ` (${log.servings}x)` : ''}` : log.servings > 1 ? `${log.servings} servings` : ''}
-                calories={`${Math.round(log.calories)} cal`}
+            return (
+              <MealCard
+                key={meal}
+                title={MEAL_LABELS[meal]}
+                meals={items}
+                onAdd={() => { }}
+                onMealPress={handleMealPress}
+                emptyText="No meals logged"
               />
-            ))}
-          </MealCard>
-
-          <MealCard
-            title="Snacks"
-            onAdd={() => { }}
-            emptyText="No snacks logged. Tap '+' to add food."
-          >
-            {mealsByType.snack.map((log) => (
-              <MealItem
-                key={log.id}
-                name={log.food_name}
-                description={log.brand ? `${log.brand}${log.servings > 1 ? ` (${log.servings}x)` : ''}` : log.servings > 1 ? `${log.servings} servings` : ''}
-                calories={`${Math.round(log.calories)} cal`}
-              />
-            ))}
-          </MealCard>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -309,6 +311,14 @@ export default function Index() {
       </TouchableOpacity>
 
       <AddFoodSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)} />
+      
+      <FoodDetailSheet
+        visible={isDetailSheetOpen}
+        onClose={() => setIsDetailSheetOpen(false)}
+        onSave={handleLogSave}
+        food={detailSheetFood}
+        initialValues={detailSheetInitialValues}
+      />
     </ThemedView>
   );
 }

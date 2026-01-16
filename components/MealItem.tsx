@@ -1,26 +1,34 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { ThemedText } from './themed-text';
+import { StyleSheet, TouchableOpacity } from 'react-native';
+import { FoodEntrySummary } from './FoodEntrySummary';
 
 interface MealItemProps {
     name: string;
-    description: string;
-    calories: string;
+    brand?: string | null;
+    serving: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
 }
 
-export function MealItem({ name, description, calories }: MealItemProps) {
+export function MealItem({ name, brand, serving, calories, carbs, fat, protein, onPress }: MealItemProps & { onPress?: () => void }) {
     return (
-        <View style={styles.row}>
-            <View>
-                <ThemedText type="defaultSemiBold">{name}</ThemedText>
-                <ThemedText type="default" style={styles.muted}>{description}</ThemedText>
-            </View>
-            <ThemedText type="default">{calories}</ThemedText>
-        </View>
+        <TouchableOpacity style={styles.row} className='pt-2 pb-6' onPress={onPress}>
+            <FoodEntrySummary
+                name={name}
+                brand={brand || undefined}
+                serving={serving}
+                calories={calories}
+                carbs={carbs}
+                fat={fat}
+                protein={protein}
+                nameSize="lg"
+            />
+        </TouchableOpacity>
     );
 }
 
 const styles = StyleSheet.create({
-    row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EEE' },
-    muted: { color: '#777', fontSize: 13 },
+    row: { borderBottomWidth: 1, borderBottomColor: '#EEE' },
 });

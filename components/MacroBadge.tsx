@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 
-type MacroType = 'carbs' | 'fat' | 'protein';
+export type MacroType = 'carbs' | 'fat' | 'protein';
 
 interface MacroBadgeProps {
   type: MacroType;
