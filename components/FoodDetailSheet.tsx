@@ -7,10 +7,10 @@ import { FoodDetailSheetProps, MacroItem } from '@/types/foodDetail';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
-import { ActionSheetIOS, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActionSheetIOS, Alert, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { FoodEntrySummary } from './FoodEntrySummary';
 
-export function FoodDetailSheet({ visible, onClose, onSave, food, initialValues }: FoodDetailSheetProps) {
+export function FoodDetailSheet({ visible, onClose, onSave, onDelete, food, initialValues }: FoodDetailSheetProps) {
     const colorScheme = useColorScheme() ?? 'light';
     const themeColors = Colors[colorScheme];
     const isDark = colorScheme === 'dark';
@@ -150,6 +150,29 @@ export function FoodDetailSheet({ visible, onClose, onSave, food, initialValues 
             const nextIndex = (currentIndex + 1) % MEAL_TYPES.length;
             setMealType(MEAL_TYPES[nextIndex].value);
         }
+    };
+
+    const handleDelete = () => {
+        if (!initialValues?.logId || !onDelete) return;
+
+        Alert.alert(
+            "Delete Entry",
+            "Are you sure you want to delete this food entry?",
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => {
+                        onDelete(initialValues.logId!);
+                        onClose();
+                    }
+                }
+            ]
+        );
     };
 
     const macroSections = getMacroSections({
@@ -309,9 +332,12 @@ export function FoodDetailSheet({ visible, onClose, onSave, food, initialValues 
                 </ScrollView>
 
                 {/* Floating Bottom Bar */}
-                <View className="absolute bottom-8 left-0 right-0 flex items-center justify-center pointer-events-none">
+                <View 
+                    className="absolute bottom-8 left-0 right-0 flex items-center justify-center"
+                    pointerEvents="box-none"
+                >
                     <View 
-                        className="rounded-full px-6 py-3 flex-row items-center gap-8 shadow-2xl border pointer-events-auto"
+                        className="rounded-full px-6 py-3 flex-row items-center gap-8 shadow-2xl border"
                         style={{ 
                             backgroundColor: themeColors.card, 
                             borderColor: themeColors.border,
@@ -324,7 +350,10 @@ export function FoodDetailSheet({ visible, onClose, onSave, food, initialValues 
                     >
                         {initialValues?.logId && (
                             <>
-                                <TouchableOpacity className="items-center justify-center">
+                                <TouchableOpacity 
+                                    onPress={handleDelete}
+                                    className="items-center justify-center"
+                                >
                                     <Ionicons name="trash-outline" size={26} color={secondaryText} />
                                 </TouchableOpacity>
                                 <View className="w-px h-6" style={{ backgroundColor: themeColors.border }} />

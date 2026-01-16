@@ -20,6 +20,7 @@ export interface FoodDetailSheetProps {
     visible: boolean;
     onClose: () => void;
     onSave: (data: any) => void;
+    onDelete?: (logId: string) => void;
     food: any;
     initialValues?: {
         portion?: string;

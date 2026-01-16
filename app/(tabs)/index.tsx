@@ -215,6 +215,45 @@ export default function Index() {
     });
   };
 
+  const handleLogDelete = async (logId: string) => {
+    setIsDetailSheetOpen(false);
+    
+    // Optimistic update
+    setFoodLogs(currentLogs => {
+      const newLogs = currentLogs.filter(log => log.id !== logId);
+      
+      // Recalculate totals
+      const totals = newLogs.reduce(
+        (acc, log) => ({
+             calories: acc.calories + log.calories,
+             protein: acc.protein + log.protein,
+             carbs: acc.carbs + log.carbs,
+             fat: acc.fat + log.fat,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      );
+      setDailyTotals(totals);
+
+      return newLogs;
+    });
+
+    try {
+      const { error } = await supabase
+        .from('food_logs')
+        .delete()
+        .eq('id', logId);
+
+      if (error) {
+        console.error('Error deleting log:', error);
+        // We could revert state here if needed, but for now we'll just log
+        fetchDailyData(); // Refresh to be safe
+      }
+    } catch (error) {
+      console.error('Error in handleLogDelete:', error);
+      fetchDailyData();
+    }
+  };
+
   if (loading) {
     return (
       <ThemedView style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -318,6 +357,7 @@ export default function Index() {
         visible={isDetailSheetOpen}
         onClose={() => setIsDetailSheetOpen(false)}
         onSave={handleLogSave}
+        onDelete={handleLogDelete}
         food={detailSheetFood}
         initialValues={detailSheetInitialValues}
       />
