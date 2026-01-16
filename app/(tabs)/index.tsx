@@ -181,12 +181,10 @@ export default function Index() {
 
   const handleLogSave = (updatedLog: FoodLog) => {
     setIsDetailSheetOpen(false);
-    
     // Update foodLogs locally
     setFoodLogs(currentLogs => {
       const exists = currentLogs.some(log => log.id === updatedLog.id);
       let newLogs: FoodLog[];
-      
       if (exists) {
         if (updatedLog.logged_date === formatDate(selectedDate)) {
           newLogs = currentLogs.map(log => log.id === updatedLog.id ? updatedLog : log);
@@ -194,7 +192,11 @@ export default function Index() {
           newLogs = currentLogs.filter(log => log.id !== updatedLog.id);
         }
       } else {
-        newLogs = [...currentLogs, updatedLog];
+        if (updatedLog.logged_date === formatDate(selectedDate)) {
+          newLogs = [...currentLogs, updatedLog];
+        } else {
+          newLogs = currentLogs;
+        }
       }
       
       // Recalculate totals
@@ -211,6 +213,45 @@ export default function Index() {
 
       return newLogs;
     });
+  };
+
+  const handleLogDelete = async (logId: string) => {
+    setIsDetailSheetOpen(false);
+    
+    // Optimistic update
+    setFoodLogs(currentLogs => {
+      const newLogs = currentLogs.filter(log => log.id !== logId);
+      
+      // Recalculate totals
+      const totals = newLogs.reduce(
+        (acc, log) => ({
+             calories: acc.calories + log.calories,
+             protein: acc.protein + log.protein,
+             carbs: acc.carbs + log.carbs,
+             fat: acc.fat + log.fat,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      );
+      setDailyTotals(totals);
+
+      return newLogs;
+    });
+
+    try {
+      const { error } = await supabase
+        .from('food_logs')
+        .delete()
+        .eq('id', logId);
+
+      if (error) {
+        console.error('Error deleting log:', error);
+        // We could revert state here if needed, but for now we'll just log
+        fetchDailyData(); // Refresh to be safe
+      }
+    } catch (error) {
+      console.error('Error in handleLogDelete:', error);
+      fetchDailyData();
+    }
   };
 
   if (loading) {
@@ -310,12 +351,13 @@ export default function Index() {
         <Text className='text-white text-5xl'>+</Text>
       </TouchableOpacity>
 
-      <AddFoodSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)} />
+      <AddFoodSheet isVisible={isSheetOpen} onClose={() => setIsSheetOpen(false)} onFoodAdd={handleLogSave} />
       
       <FoodDetailSheet
         visible={isDetailSheetOpen}
         onClose={() => setIsDetailSheetOpen(false)}
         onSave={handleLogSave}
+        onDelete={handleLogDelete}
         food={detailSheetFood}
         initialValues={detailSheetInitialValues}
       />

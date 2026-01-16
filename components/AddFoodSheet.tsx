@@ -11,9 +11,10 @@ import { ThemedText } from './themed-text';
 interface AddFoodSheetProps {
     isVisible: boolean;
     onClose: () => void;
+    onFoodAdd?: (log: any) => void;
 }
 
-export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }) => {
+export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose, onFoodAdd }) => {
     const [query, setQuery] = useState("");
     const debouncedQuery = useDebounce(query, 300);
     const [results, setResults] = useState<any[]>([]);
@@ -53,6 +54,10 @@ export const AddFoodSheet: React.FC<AddFoodSheetProps> = ({ isVisible, onClose }
         
         // Add to recents if not already there (optional, handled by backend usually)
         await upsertRecentFood(entry);
+
+        if (onFoodAdd) {
+            onFoodAdd(entry);
+        }
 
         setSelectedFood(null);
         onClose();
