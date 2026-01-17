@@ -264,7 +264,7 @@ export default function Index() {
 
   return (
     <ThemedView style={styles.root}>
-      <ScrollView className='flex-1 p-[2em] pl-3 pr-3' contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView className='flex-1 px-3 mt-7 mb-3' contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View className='' style={styles.header}>
           <TouchableOpacity style={styles.iconButton} onPress={() => changeDate('prev')}>
             <ThemedText type="default" style={styles.chev}>&lt;</ThemedText>
@@ -367,7 +367,7 @@ export default function Index() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  container: { paddingBottom: 10, minHeight: '100%' },
+  container: { flexGrow: 1,},
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12 },
   iconButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 18, textAlign: 'center' },

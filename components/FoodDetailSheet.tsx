@@ -7,7 +7,7 @@ import { FoodDetailSheetProps, MacroItem } from '@/types/foodDetail';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
-import { ActionSheetIOS, Alert, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActionSheetIOS, Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { FoodEntrySummary } from './FoodEntrySummary';
 
 export function FoodDetailSheet({ visible, onClose, onSave, onDelete, food, initialValues }: FoodDetailSheetProps) {
@@ -30,6 +30,7 @@ export function FoodDetailSheet({ visible, onClose, onSave, onDelete, food, init
     const [mealType, setMealType] = useState(initialValues?.mealType || food?.meal_type || "breakfast");
     const [date, setDate] = useState(initialValues?.date ? new Date(initialValues.date) : new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [isModalVisible, setModalVisible] = useState(false);
 
     const onDateChange = (event: any, selectedDate?: Date) => {
         const currentDate = selectedDate || date;
@@ -146,9 +147,7 @@ export function FoodDetailSheet({ visible, onClose, onSave, onDelete, food, init
                 }
             });
         } else {
-            const currentIndex = MEAL_TYPES.findIndex(m => m.value === mealType);
-            const nextIndex = (currentIndex + 1) % MEAL_TYPES.length;
-            setMealType(MEAL_TYPES[nextIndex].value);
+            setModalVisible(true)
         }
     };
 
@@ -254,7 +253,68 @@ export function FoodDetailSheet({ visible, onClose, onSave, onDelete, food, init
                                 <Ionicons name="chevron-expand" size={20} color={secondaryText} />
                             </View>
                         </TouchableOpacity>
+                        <Modal
+                            transparent={true}
+                            visible={isModalVisible}
+                            animationType="fade"
+                            onRequestClose={() => setModalVisible(false)}
+                        >
+                            <Pressable
+                                className="flex-1 justify-end bg-black/60"
+                                onPress={() => setModalVisible(false)}
+                            >
+                                <View
+                                    className="rounded-t-3xl p-6"
+                                    style={{ backgroundColor: themeColors.background, paddingBottom: 40 }}
+                                >
+                                    <View className="items-center mb-4">
+                                        <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
+                                    </View>
 
+                                    <Text className="text-xl font-bold mb-4" style={{ color: themeColors.text }}>
+                                        Select Meal Type
+                                    </Text>
+
+                                    <ScrollView showsVerticalScrollIndicator={false}>
+                                        {MEAL_TYPES.map((item) => {
+                                            const isSelected = mealType === item.value;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={item.value}
+                                                    className="py-4 flex-row justify-between items-center border-b"
+                                                    style={{ borderColor: themeColors.border }}
+                                                    onPress={() => {
+                                                        setMealType(item.value);
+                                                        setModalVisible(false);
+                                                    }}
+                                                >
+                                                    <Text
+                                                        className="text-lg"
+                                                        style={{
+                                                            color: isSelected ? themeColors.tint : themeColors.text,
+                                                            fontWeight: isSelected ? '700' : '400'
+                                                        }}
+                                                    >
+                                                        {item.label}
+                                                    </Text>
+                                                    {isSelected && (
+                                                        <Ionicons name="checkmark-circle" size={22} color={themeColors.tint} />
+                                                    )}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+
+                                    <TouchableOpacity
+                                        className="mt-4 py-4 rounded-2xl items-center"
+                                        style={{ backgroundColor: themeColors.border }}
+                                        onPress={() => setModalVisible(false)}
+                                    >
+                                        <Text className="font-bold text-lg" style={{ color: themeColors.text }}>Cancel</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </Pressable>
+                        </Modal>
                         <View className="flex-row items-center justify-between p-4 border-b" style={{ borderColor: themeColors.border }}>
                             <Text className="font-semibold text-lg" style={{ color: textColor }}>Portion</Text>
                             <View className="flex-row items-center gap-2">
